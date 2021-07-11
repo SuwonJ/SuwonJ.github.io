@@ -39,6 +39,10 @@ button{
     outline-width: 5px;
     transition:0.3s;
  }
+ .social{
+    width:30px;
+     height:30px;
+ }
  button:hover{
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.596);
     cursor: pointer;
