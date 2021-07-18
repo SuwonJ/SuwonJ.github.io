@@ -1,13 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
 
 body{
-    background-image : url('https://miuc.org/wp-content/uploads/2018/02/How-can-colours-help-you-in-your-everyday-life.jpg');
+    background-image : url('https://raw.githubusercontent.com/SuwonJ/SuwonJ.github.io/master/images/a_03_1280_tablet.mp4');
     background-repeat: no-repeat;
+    border: 0;
+    padding: 0; 
+    min-height: 100%;
+    background-position: center;
     background-size: cover;
     
 }
 
- 
+video { width: 100%; }
 
 
 button{
@@ -61,6 +65,8 @@ header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+    
+    
 }
 
 nav{
