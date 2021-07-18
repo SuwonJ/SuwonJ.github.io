@@ -56,6 +56,9 @@ button{
 .container {
 	width:1440px;
 	margin:0 auto;
+    position: absolute;
+     top: 50%;
+      width: 100%;
     
 }
 header {
