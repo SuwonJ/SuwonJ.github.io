@@ -11,7 +11,10 @@ body{
     
 }
 
-video { width: 100%; }
+video { 
+    width: 100%;
+    
+}
 
 
 button{
@@ -20,7 +23,7 @@ button{
      height:60px;
     background-color: rgba(255, 255, 255, 0.555);
     color:rgba(82, 82, 82);
-    box-shadow: 0 4px 16px rgba(150, 150, 150, 0.3);
+    box-shadow: 0 4px 16px rgba(138, 138, 138, 0.897);
     font-size: 20px;
     border-radius:0 0 25px 25px;
     border-width: 0px;
@@ -57,7 +60,7 @@ button{
 	width:1440px;
 	margin:0 auto;
     position: absolute;
-     top: 50%;
+     top: 0px;
       width: 100%;
     
 }
@@ -87,7 +90,7 @@ nav{
 .rcontainer{
     margin-top: 10px;
     margin-left: 30px;
-    margin-right: 0px;
+    margin-right: 30px;
     width: 96%;
     height: 1100px;
     background-color: #ffffff56;
@@ -104,7 +107,7 @@ nav{
 .tmpimg{
     margin-top: 10px;
     margin-left: 30px;
-    margin-right: 0px;
+    margin-right: 30px;
     width: 500px;
     height: 500px;
     background-color: #ff0000;
