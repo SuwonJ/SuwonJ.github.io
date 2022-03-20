@@ -1,0 +1,92 @@
+@charset 'UTF-8';
+@font-face {
+	font-family: 'Pretendard Variable';
+	font-weight: 1 1000;
+	font-style: normal;
+	src: url('https://tistory1.daumcdn.net/tistory/814207/skin/images/PretendardVariable.woff2') format('woff2-variations');
+}
+body {
+	font-family: 'Pretendard Variable';
+}
+h2 {
+	max-width: 100%;
+	text-align: center;
+	font-size: 10vw;
+	line-height: 1.25;
+    font-weight: 400;
+}
+
+
+
+h2 > tname {
+	animation: variable-loop 1s both;
+	text-align: center;
+}
+@keyframes variable-loop {
+	0% {
+		font-weight: 1;
+	}
+    20% {
+		font-weight: 10;
+	}
+    80% {
+		font-weight: 1000;
+	}
+	100% {
+		font-weight: 850;
+	}
+}
+
+span:hover{
+    animation:variable-more 0.4s ;
+    font-weight: 940;
+    background: -webkit-linear-gradient( #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+}
+@keyframes variable-more {
+	0% {
+		font-weight: 400;
+        background: black;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+	}
+	100% {
+		font-weight: 940;
+        background: -webkit-linear-gradient( #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+	}
+}
+
+span:active{
+        background: black;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+}
+
+
+
+
+
+spann:hover{
+    animation:variable-more 0.4s ;
+    font-weight: 940;
+    color:#4267B2;
+}
+@keyframes variable-more {
+	0% {
+		font-weight: 400;
+        color:black;
+	}
+	100% {
+		font-weight: 940;
+        color:#4267B2;
+	}
+}
+
+spann:active{
+        background: black;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+}
