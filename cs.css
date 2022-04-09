@@ -16,8 +16,7 @@ h2 {
     font-weight: 400;
 }
 
-
-
+/*타이틀*/
 h2 > tname {
 	animation: variable-loop 1s both;
 	text-align: center;
@@ -37,14 +36,49 @@ h2 > tname {
 	}
 }
 
-span:hover{
-    animation:variable-more 0.4s ;
+/*contact*/
+
+.contactline {
+	display: flex;
+	flex-basis: 100%;
+	align-items: center;
+	color: rgb(0, 0, 0);
+	font-size: 62px;
+	margin: 5px 0px;
+  }
+  .contactline::before,
+  .contactline::after {
+	content: "";
+	flex-grow: 30;
+	background: rgb(0, 0, 0);
+	height: 5px;
+	font-size: 0px;
+	border-radius: 10px;
+	line-height: 10px;
+	margin: 0px 80px;
+	animation: contactline 1s;
+  }
+@keyframes contactline {
+	0% {
+		margin: 0px 1000px;
+	}
+	80% {
+		margin: 0px 20px;
+	}
+	100% {
+		margin: 0px 80px;
+	}
+}
+
+/*인스타그램 소셜*/
+socialinsta:hover{
+    animation:instatxt 0.4s ;
     font-weight: 940;
     background: -webkit-linear-gradient( #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 }
-@keyframes variable-more {
+@keyframes instatxt {
 	0% {
 		font-weight: 400;
         background: black;
@@ -59,22 +93,13 @@ span:hover{
 	}
 }
 
-span:active{
-        background: black;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-}
-
-
-
-
-
-spann:hover{
-    animation:variable-more 0.4s ;
+/*페이스북 소셜*/
+socialfacebook:hover{
+    animation:fbtxt 0.4s ;
     font-weight: 940;
     color:#4267B2;
 }
-@keyframes variable-more {
+@keyframes fbtxt {
 	0% {
 		font-weight: 400;
         color:black;
@@ -85,8 +110,20 @@ spann:hover{
 	}
 }
 
-spann:active{
-        background: black;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+
+/*텔레그램 소셜*/
+socialtelegram:hover{
+    animation:tgtxt 0.4s ;
+    font-weight: 940;
+    color:#0088cc;
+}
+@keyframes tgtxt {
+	0% {
+		font-weight: 400;
+        color:black;
+	}
+	100% {
+		font-weight: 940;
+        color:#0088cc;
+	}
 }
