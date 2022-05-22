@@ -16,6 +16,14 @@ h2 {
     font-weight: 400;
 }
 
+b{
+	font-size: 10vw;
+    font-weight: 400;
+	text-align: center;
+	max-width: 100%;
+
+}
+
 /*타이틀*/
 h2 > tname {
 	animation: variable-loop 1s both;
@@ -128,4 +136,76 @@ socialtelegram:hover{
 		font-weight: 940;
         color:#0088cc;
 	}
+}
+
+/*github*/
+wswgithub:hover{
+    animation:ghtxt 0.4s ;
+    font-weight: 940;
+    color:#FFF8E7;
+	-webkit-text-stroke-color: black;
+
+	-webkit-text-stroke-width: 0.02em;
+
+}
+@keyframes ghtxt {
+	0% {
+		font-weight: 400;
+        color:black;
+		
+	}
+	100% {
+		font-weight: 940;
+        color:#FFF8E7;
+		-webkit-text-stroke-color: black;
+		-webkit-text-stroke-width: 0.02em;
+	} 
+}
+
+/*solvedac*/
+wswsolvedac:hover{
+    animation:solvedactxt 0.4s ;
+    font-weight: 940;
+    color:#000000;
+
+}
+@keyframes solvedactxt {
+	0% {
+		font-weight: 400;
+        color:black;
+		
+	}
+	100% {
+		font-weight: 940;
+        color:#000000;
+	} 
+}
+
+
+
+/*solvedac*/
+.solvedac:hover ~ .ac {
+    animation:actxt 0.4s ;
+    font-weight: 940;
+    color:#ffffff;
+	width : 800px;
+  height: 100px;
+  border-radius: 0.25em;
+  background-color: #50da6a;
+}
+@keyframes actxt {
+	0% {
+		font-weight: 400;
+        color:black;
+		background-color: #fff8e7;
+
+
+		
+	}
+	100% {
+		font-weight: 940;
+        color:#ffffff;
+		background-color: #50da6a;
+
+	} 
 }
