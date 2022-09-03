@@ -107,7 +107,9 @@ socialinsta:hover{
 socialfacebook:hover{
     animation:fbtxt 0.4s ;
     font-weight: 940;
-    color:#4267B2;
+	background: -webkit-linear-gradient(   #0165E1, #17A9FD);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
 }
 @keyframes fbtxt {
 	0% {
@@ -116,10 +118,34 @@ socialfacebook:hover{
 	}
 	100% {
 		font-weight: 940;
-        color:#4267B2;
+		background: -webkit-linear-gradient(   #0165E1, #17A9FD);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
 	}
 }
 
+/*FB메신저 소셜*/
+socialFBmessenger:hover{
+    animation:FBMtxt 0.4s ;
+    font-weight: 940;
+	background: -webkit-linear-gradient(  #FF6968, #A334FA,#0695FF);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+}
+@keyframes FBMtxt {
+	0% {
+		font-weight: 400;
+        background: black;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+	}
+	100% {
+		font-weight: 940;
+        background: -webkit-linear-gradient(  #FF6968, #A334FA,#0695FF);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+	}
+}
 
 /*텔레그램 소셜*/
 socialtelegram:hover{
