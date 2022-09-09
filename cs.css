@@ -195,6 +195,22 @@ socialdiscord:hover{
         color:#5865F2;
 	}
 }
+/*스포티파이 소셜*/
+socialdiscord:hover{
+    animation:spotifytxt 0.4s ;
+    font-weight: 940;
+    color:#1DB954;
+}
+@keyframes spotifytxt {
+	0% {
+		font-weight: 400;
+        color:black;
+	}
+	100% {
+		font-weight: 940;
+        color:#1DB954;
+	}
+}
 /*github*/
 wswgithub:hover{
     animation:ghtxt 0.4s ;
