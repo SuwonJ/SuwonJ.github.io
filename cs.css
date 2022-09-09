@@ -179,6 +179,22 @@ socialkakao:hover{
         color:#3F3035;
 	}
 }
+/*디스코드 소셜*/
+socialdiscord:hover{
+    animation:dcdtxt 0.4s ;
+    font-weight: 940;
+    color:#5865F2;
+}
+@keyframes dcdtxt {
+	0% {
+		font-weight: 400;
+        color:black;
+	}
+	100% {
+		font-weight: 940;
+        color:#5865F2;
+	}
+}
 /*github*/
 wswgithub:hover{
     animation:ghtxt 0.4s ;
