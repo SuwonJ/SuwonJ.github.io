@@ -163,7 +163,22 @@ socialtelegram:hover{
         color:#0088cc;
 	}
 }
-
+/*카카오톡 소셜*/
+socialkakao:hover{
+    animation:kkotxt 0.4s ;
+    font-weight: 940;
+    color:#3F3035;
+}
+@keyframes kkotxt {
+	0% {
+		font-weight: 400;
+        color:black;
+	}
+	100% {
+		font-weight: 940;
+        color:#3F3035;
+	}
+}
 /*github*/
 wswgithub:hover{
     animation:ghtxt 0.4s ;
