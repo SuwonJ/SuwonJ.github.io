@@ -7,13 +7,33 @@
 }
 body {
 	font-family: 'Pretendard Variable';
+	background: linear-gradient(-45deg,#150558,#03204d, #1e2b4b, #1c3c81 , #234186 ,#1b5b98,#2571af );
+	animation: gradient 20s ease infinite;
+	background-size: 500% 500%;
+
 }
+
+@keyframes gradient {
+	0% {
+		background-position: 0% 00%;
+	}
+	50% {
+		background-position: 100% 100%;
+	}
+	100% {
+		background-position: 0% 00%;
+	}
+}
+
+
 h2 {
 	max-width: 100%;
 	text-align: center;
 	font-size: 10vw;
 	line-height: 1.25;
     font-weight: 400;
+	color: #84cbec;
+	
 }
 
 b{
@@ -50,7 +70,7 @@ h2 > tname {
 	display: flex;
 	flex-basis: 100%;
 	align-items: center;
-	color: rgb(0, 0, 0);
+	color: #84cbec;
 	font-size: 62px;
 	margin: 5px 0px;
   }
@@ -58,7 +78,7 @@ h2 > tname {
   .contactline::after {
 	content: "";
 	flex-grow: 30;
-	background: rgb(0, 0, 0);
+	background: #84cbec;
 	height: 5px;
 	font-size: 0px;
 	border-radius: 10px;
@@ -84,20 +104,21 @@ h2 > tname {
 socialinsta:hover{
     animation:instatxt 0.4s ;
     font-weight: 940;
-    background: -webkit-linear-gradient( #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
+    background: -webkit-linear-gradient(0deg, #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 }
 @keyframes instatxt {
 	0% {
 		font-weight: 400;
-        background: black;
+        background: -webkit-linear-gradient(0deg, #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
+
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 	}
 	100% {
 		font-weight: 940;
-        background: -webkit-linear-gradient( #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
+        background: -webkit-linear-gradient(0deg, #405DE6, #5851D8,#833AB4, #C13584,#E1306C,#FD1D1D,#F56040,#F56040,#FCAF45,#FFDC80);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 	}
@@ -114,7 +135,7 @@ socialfacebook:hover{
 @keyframes fbtxt {
 	0% {
 		font-weight: 400;
-        color:black;
+		color: #84cbec;
 	}
 	100% {
 		font-weight: 940;
@@ -128,20 +149,20 @@ socialfacebook:hover{
 socialFBmessenger:hover{
     animation:FBMtxt 0.4s ;
     font-weight: 940;
-	background: -webkit-linear-gradient(  #FF6968, #A334FA,#0695FF);
+	background: -webkit-linear-gradient(0deg,  #FF6968, #A334FA,#0695FF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 }
 @keyframes FBMtxt {
 	0% {
 		font-weight: 400;
-        background: black;
+		color: #84cbec;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 	}
 	100% {
 		font-weight: 940;
-        background: -webkit-linear-gradient(  #FF6968, #A334FA,#0695FF);
+        background: -webkit-linear-gradient(0deg,  #FF6968, #A334FA,#0695FF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
 	}
@@ -156,7 +177,7 @@ socialtelegram:hover{
 @keyframes tgtxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 	}
 	100% {
 		font-weight: 940;
@@ -172,7 +193,7 @@ socialkakao:hover{
 @keyframes kkotxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 	}
 	100% {
 		font-weight: 940;
@@ -188,7 +209,7 @@ socialdiscord:hover{
 @keyframes dcdtxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 	}
 	100% {
 		font-weight: 940;
@@ -196,7 +217,7 @@ socialdiscord:hover{
 	}
 }
 /*스포티파이 소셜*/
-socialdiscord:hover{
+socialspotify:hover{
     animation:spotifytxt 0.4s ;
     font-weight: 940;
     color:#1DB954;
@@ -204,7 +225,7 @@ socialdiscord:hover{
 @keyframes spotifytxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 	}
 	100% {
 		font-weight: 940;
@@ -215,7 +236,7 @@ socialdiscord:hover{
 wswgithub:hover{
     animation:ghtxt 0.4s ;
     font-weight: 940;
-    color:#FFF8E7;
+    color:#fff8e700;
 	-webkit-text-stroke-color: black;
 
 	-webkit-text-stroke-width: 0.02em;
@@ -224,12 +245,12 @@ wswgithub:hover{
 @keyframes ghtxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 		
 	}
 	100% {
 		font-weight: 940;
-        color:#FFF8E7;
+        color:#fff8e700;
 		-webkit-text-stroke-color: black;
 		-webkit-text-stroke-width: 0.02em;
 	} 
@@ -245,7 +266,7 @@ wswsolvedac:hover{
 @keyframes solvedactxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 		
 	}
 	100% {
@@ -269,7 +290,7 @@ wswsolvedac:hover{
 @keyframes actxt {
 	0% {
 		font-weight: 400;
-        color:black;
+        color: #84cbec;
 		background-color: #fff8e7;
 
 
