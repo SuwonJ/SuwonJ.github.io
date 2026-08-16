@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sulog Studio - CMS Dashboard</title>
+    
+    <!-- Modern Typography & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+    <!-- KaTeX & Highlight.js CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-red: #f87171;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Navigation Header */
+        .app-header {
+            height: 56px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        .brand-logo .badge {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-main);
+            padding: 0.35rem 0.8rem;
+            border-radius: 9999px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .user-chip img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+            transition: all 0.15s ease;
+        }
+
+        .btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: #0f172a;
+            border-color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #0284c7;
+            border-color: #0284c7;
+        }
+
+        /* Main Workspace Split View */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .pane:last-child {
+            border-right: none;
+        }
+
+        /* Metadata & Config Bar */
+        .config-bar {
+            padding: 1rem 1.5rem;
+            background: #111827;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .input-title {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--text-main);
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 0.4rem 0;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .input-title:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .cat-selector {
+            display: flex;
+            background: var(--bg-main);
+            padding: 0.2rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .cat-opt {
+            padding: 0.35rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.15s;
+        }
+
+        .cat-opt.active {
+            background: var(--bg-card);
+            color: var(--accent-blue);
+        }
+
+        .input-tags {
+            width: 100%;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 0.45rem 0.8rem;
+            font-size: 0.85rem;
+            outline: none;
+            font-family: var(--font-mono);
+        }
+
+        /* Formatting Toolbar */
+        .toolbar {
+            height: 42px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0 1rem;
+            overflow-x: auto;
+        }
+
+        .tool-btn {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .tool-divider {
+            width: 1px;
+            height: 18px;
+            background: var(--border-color);
+            margin: 0 0.4rem;
+        }
+
+        /* Textarea Editor */
+        .editor-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+        }
+
+        .editor-textarea {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: none;
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            resize: none;
+            outline: none;
+            tab-size: 2;
+        }
+
+        /* Drop Overlay */
+        .drag-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(56, 189, 248, 0.1);
+            border: 2px dashed var(--accent-blue);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            color: var(--accent-blue);
+            font-size: 1.1rem;
+            font-weight: 600;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .drag-overlay.active {
+            display: flex;
+        }
+
+        /* Live Preview Pane */
+        .preview-header {
+            height: 42px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .preview-body {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: var(--bg-main);
+            line-height: 1.8;
+        }
+
+        /* Custom Preview Styles */
+        .preview-body h1, .preview-body h2, .preview-body h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.8rem;
+            color: #f8fafc;
+        }
+        .preview-body p {
+            margin-bottom: 1rem;
+            color: #cbd5e1;
+        }
+        .preview-body code {
+            font-family: var(--font-mono);
+            background: #1e293b;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: #38bdf8;
+        }
+        .preview-body pre {
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        .preview-body blockquote {
+            border-left: 4px solid #38bdf8;
+            padding-left: 1rem;
+            color: #94a3b8;
+            margin: 1rem 0;
+        }
+        .preview-body mark {
+            background: rgba(251, 191, 36, 0.25);
+            color: #fbbf24;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+
+        /* Status Footer */
+        .app-footer {
+            height: 32px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 45px;
+            right: 20px;
+            background: #1e293b;
+            border: 1px solid var(--accent-blue);
+            color: var(--text-main);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            z-index: 100;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header">
+        <a href="/admin/" class="brand-logo">
+            <span>Sulog Studio</span>
+            <span class="badge">PRO CMS</span>
+        </a>
+
+        <div class="header-actions">
+            <div id="user-chip-container">
+                <div class="user-chip">로그인 확인 중...</div>
+            </div>
+            <button type="button" id="btn-publish" class="btn btn-primary">
+                <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
+                발행하기
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="workspace">
+        <!-- Editor Pane -->
+        <div class="pane">
+            <div class="config-bar">
+                <div class="input-row">
+                    <input type="text" id="input-title" class="input-title" placeholder="제목을 입력하세요..." autofocus>
+                    
+                    <div class="cat-selector">
+                        <div class="cat-opt active" data-cat="blog">#blog</div>
+                        <div class="cat-opt" data-cat="research">#research</div>
+                    </div>
+                </div>
+
+                <input type="text" id="input-tags" class="input-tags" placeholder="주제 태그 (쉼표 구분: cpp, ai, algorithm)">
+            </div>
+
+            <!-- Formatting Toolbar -->
+            <div class="toolbar">
+                <button type="button" class="tool-btn" data-cmd="bold" title="굵게 (Ctrl+B)"><span class="material-symbols-outlined">format_bold</span></button>
+                <button type="button" class="tool-btn" data-cmd="italic" title="기울임 (Ctrl+I)"><span class="material-symbols-outlined">format_italic</span></button>
+                <button type="button" class="tool-btn" data-cmd="strike" title="취소선"><span class="material-symbols-outlined">strikethrough_s</span></button>
+                <button type="button" class="tool-btn" data-cmd="highlight" title="형광펜"><span class="material-symbols-outlined">ink_highlighter</span></button>
+                
+                <div class="tool-divider"></div>
+
+                <button type="button" class="tool-btn" data-cmd="h1" title="제목 1">H1</button>
+                <button type="button" class="tool-btn" data-cmd="h2" title="제목 2">H2</button>
+                <button type="button" class="tool-btn" data-cmd="h3" title="제목 3">H3</button>
+
+                <div class="tool-divider"></div>
+
+                <button type="button" class="tool-btn" data-cmd="code" title="코드 블록"><span class="material-symbols-outlined">code</span></button>
+                <button type="button" class="tool-btn" data-cmd="quote" title="인용구"><span class="material-symbols-outlined">format_quote</span></button>
+                <button type="button" class="tool-btn" data-cmd="math" title="KaTeX 수식"><span class="material-symbols-outlined">functions</span></button>
+                <button type="button" class="tool-btn" data-cmd="link" title="링크"><span class="material-symbols-outlined">link</span></button>
+            </div>
+
+            <!-- Editor Textarea -->
+            <div class="editor-container">
+                <textarea id="editor-textarea" class="editor-textarea" placeholder="여기에 마크다운 문법으로 자유롭게 내용을 작성하세요... (이미지/파일 드래그 앤 드롭 지원)"></textarea>
+                <div id="drag-overlay" class="drag-overlay">
+                    📸 이미지를 놓으면 마스토돈으로 업로드됩니다
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Pane -->
+        <div class="pane">
+            <div class="preview-header">
+                <span>LIVE PREVIEW</span>
+                <span id="preview-meta-info">0 단어 | 0 자</span>
+            </div>
+            <div id="preview-body" class="preview-body">
+                <h1 id="preview-title" style="color:var(--text-muted); font-weight:400;">제목 프리뷰...</h1>
+                <div id="preview-tags" style="margin-bottom: 1.5rem; font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-blue);"></div>
+                <div id="preview-markdown-content"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Status Bar -->
+    <footer class="app-footer">
+        <div id="status-draft">자동 저장 준비됨</div>
+        <div id="status-server">서버: maximux.suwonmars.com</div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toast-icon" class="material-symbols-outlined">info</span>
+        <span id="toast-message">알림 메시지</span>
+    </div>
+
+    <script type="module" src="./admin.js"></script>
+</body>
+</html>
