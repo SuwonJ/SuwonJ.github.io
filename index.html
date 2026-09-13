@@ -4,6 +4,9 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>SuwonJ</title>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             rel="icon"
             href="/assets/suwonjiconwhite.svg"
@@ -46,12 +49,13 @@
 
             .landing-icons a {
                 display: flex;
-                opacity: 0.25;
+                opacity: 0.55;
                 transition: opacity 0.25s;
             }
 
-            .landing-icons a:hover {
-                opacity: 0.7;
+            .landing-icons a:hover,
+            .landing-icons a:focus-visible {
+                opacity: 0.9;
             }
 
             .landing-icons svg {

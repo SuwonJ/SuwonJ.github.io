@@ -1,33 +1,19 @@
 const INSTANCE_URL = "https://maximux.suwonmars.com";
-const USERNAME = "logger";
-
-let cachedAccountId = null;
-
-export async function getAccountId() {
-  if (cachedAccountId) return cachedAccountId;
-  try {
-    const res = await fetch(`${INSTANCE_URL}/api/v1/accounts/lookup?acct=${USERNAME}`);
-    if (!res.ok) throw new Error("Account lookup failed");
-    const data = await res.json();
-    cachedAccountId = data.id;
-    return cachedAccountId;
-  } catch (err) {
-    console.error("Failed to lookup Mastodon account:", err);
-    return null;
-  }
-}
+const ACCOUNT_ID = "116979319977947616";
+const postsByTag = new Map();
 
 export async function fetchPostsByTag(tag) {
-  const accountId = await getAccountId();
-  if (!accountId) return [];
+  if (postsByTag.has(tag)) return postsByTag.get(tag);
 
-  const url = `${INSTANCE_URL}/api/v1/accounts/${accountId}/statuses?exclude_reblogs=true&limit=40&tagged=${encodeURIComponent(tag)}`;
+  const url = `${INSTANCE_URL}/api/v1/accounts/${ACCOUNT_ID}/statuses?exclude_reblogs=true&limit=40&tagged=${encodeURIComponent(tag)}`;
 
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error("Failed to fetch statuses");
     const statuses = await res.json();
-    return statuses.map(parseMastodonStatus);
+    const posts = statuses.map(parseMastodonStatus);
+    postsByTag.set(tag, posts);
+    return posts;
   } catch (err) {
     console.error(`Failed to fetch posts for tag ${tag}:`, err);
     return [];

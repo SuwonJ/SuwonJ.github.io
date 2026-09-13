@@ -4,6 +4,10 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>블로그</title>
+        <link rel="preconnect" href="https://maximux.suwonmars.com" crossorigin />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             rel="icon"
             href="/assets/suwonjiconwhite.svg"
@@ -18,23 +22,6 @@
                 }
             })();
         </script>
-        <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css"
-        />
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
-        />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400..700&display=swap"
-            rel="stylesheet"
-            onerror="
-                this.onerror = null;
-                this.href = '';
-            "
-        />
-
         <style>
             /* 캔버스 고정 */
             #halftone-canvas {
@@ -50,14 +37,18 @@
             /* 마크다운 본문 */
             #content a {
                 color: var(--nav-text);
-                text-decoration: none;
+                text-decoration: underline;
+                text-decoration-color: var(--toc-border);
+                text-underline-offset: 0.2em;
             }
-            #content a:hover {
+            #content a:hover,
+            #content a:focus-visible {
                 color: var(--nav-hover);
+                text-decoration-color: currentColor;
             }
         </style>
     </head>
-    <body>
+    <body class="reading-layout">
         <canvas id="halftone-canvas"></canvas>
 
         <main
@@ -88,11 +79,6 @@
 
         <aside id="floating-tree"></aside>
         <aside id="floating-toc"></aside>
-
-        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
 
         <script type="module" src="./blog.js"></script>
     </body>

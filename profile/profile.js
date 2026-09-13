@@ -184,6 +184,7 @@ function init() {
         iconScale: 0.38,
         boundarySelectors: [".navbar", "hr"],
         buttonSelectors: [],
+        maxFps: 24,
     });
     profileBg.init();
 
@@ -197,11 +198,11 @@ function init() {
         });
     });
 
-    // 스크롤 마스크 연동 (global.css의 main mask-position용)
+    // 상단 네비게이션 아래로 콘텐츠가 지나갈 때 기존 페이드 문법 유지
     window.addEventListener("scroll", () => {
         const mainEl = document.querySelector("main");
         if (mainEl) mainEl.style.setProperty("--scroll-y", `${window.scrollY}px`);
-    });
+    }, { passive: true });
 
     // 콘텐츠 렌더 후 타겟 재스캔 (hr 위치 등)
     profileBg.scanTargets();

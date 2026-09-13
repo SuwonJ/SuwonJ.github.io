@@ -13,13 +13,22 @@ export class HalftoneBackground {
     this.boundarySelectors = options.boundarySelectors || [".navbar", "hr"];
     this.buttonSelectors = options.buttonSelectors || [];
     this.iconScale = options.iconScale !== undefined ? options.iconScale : 0.7;
+    this.maxFps = Math.max(1, options.maxFps ?? 60);
+    this.lastFrameTime = 0;
 
     this.currentBoundaryYs = [];
     this.targetBoundaryYs = [];
     this.currentButtonRects = [];
     this.targetButtonRects = [];
 
-    this.mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    this.reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    this.pointerInteraction =
+      options.pointerInteraction !== false && !this.reduceMotion;
+    this.mouse = this.pointerInteraction
+      ? { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      : { x: -1000, y: -1000 };
     this.iconRect = { x: 0, y: 0, w: 400, h: 400 };
     this.iconData = null;
     this.iconImg = new Image();
@@ -27,6 +36,7 @@ export class HalftoneBackground {
     this.iconWeight = options.iconSrc ? 1.0 : 0.0;
     this.targetIconWeight = options.iconSrc ? 1.0 : 0.0;
     this.pendingIconSrc = null;
+    this.animateFrame = this.animate.bind(this);
   }
 
   init() {
@@ -44,7 +54,7 @@ export class HalftoneBackground {
     }
     this.resizeCanvas();
     this.scanTargets();
-    this.animate();
+    this.animateFrame();
   }
 
   scanTargets() {
@@ -200,30 +210,32 @@ export class HalftoneBackground {
       this.mouse.y = y;
     };
 
-    window.addEventListener("mousemove", (e) =>
-      updateMouse(e.clientX, e.clientY),
-    );
+    if (this.pointerInteraction) {
+      window.addEventListener("mousemove", (e) =>
+        updateMouse(e.clientX, e.clientY),
+      );
 
-    window.addEventListener(
-      "touchstart",
-      (e) => {
-        if (e.touches.length > 0)
-          updateMouse(e.touches[0].clientX, e.touches[0].clientY);
-      },
-      { passive: true },
-    );
+      window.addEventListener(
+        "touchstart",
+        (e) => {
+          if (e.touches.length > 0)
+            updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+        },
+        { passive: true },
+      );
 
-    window.addEventListener(
-      "touchmove",
-      (e) => {
-        if (e.touches.length > 0)
-          updateMouse(e.touches[0].clientX, e.touches[0].clientY);
-      },
-      { passive: true },
-    );
+      window.addEventListener(
+        "touchmove",
+        (e) => {
+          if (e.touches.length > 0)
+            updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+        },
+        { passive: true },
+      );
 
-    window.addEventListener("touchend", () => updateMouse(-1000, -1000));
-    window.addEventListener("mouseleave", () => updateMouse(-1000, -1000));
+      window.addEventListener("touchend", () => updateMouse(-1000, -1000));
+      window.addEventListener("mouseleave", () => updateMouse(-1000, -1000));
+    }
 
     let scrollTimeout;
     window.addEventListener(
@@ -241,6 +253,14 @@ export class HalftoneBackground {
   }
 
   animate() {
+    const now = performance.now();
+    const frameInterval = 1000 / this.maxFps;
+    if (now - this.lastFrameTime < frameInterval) {
+      requestAnimationFrame(this.animateFrame);
+      return;
+    }
+    this.lastFrameTime = now - ((now - this.lastFrameTime) % frameInterval);
+
     const scrollY = window.scrollY;
 
     // iconWeight 보간 계산 (페이드 인/아웃용)
@@ -345,7 +365,7 @@ export class HalftoneBackground {
       }
     }
 
-    const time = performance.now() * 0.002;
+    const time = this.reduceMotion ? 0 : now * 0.002;
     const yOffset = ((-scrollY % this.gap) + this.gap) % this.gap;
 
     for (let x = this.gap / 2; x < window.innerWidth; x += this.gap) {
@@ -500,6 +520,6 @@ export class HalftoneBackground {
         this.ctx.fill();
       }
     }
-    requestAnimationFrame(this.animate.bind(this));
+    requestAnimationFrame(this.animateFrame);
   }
 }

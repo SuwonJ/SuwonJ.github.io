@@ -1,7 +1,7 @@
 @font-face {
-    font-family: "Ridibatang";
-    src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/RIDIBatang.woff")
-        format("woff");
+    font-family: "NoonnuBasicGothic";
+    src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noon-2410@1.0/NoonnuBasicGothicRegular.woff2")
+        format("woff2");
     font-weight: normal;
     font-display: swap;
 }
@@ -15,18 +15,24 @@
 :root {
     --bg-color: #121212;
     --text-color: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --text-muted: #8a8a8a;
+    --decorative-color: #555555;
+    --reading-veil: rgba(18, 18, 18, 0.92);
     --navbar-bg: #12121200;
     --logo-filter: invert(100%);
-    --nav-text: #a0a0a0;
+    --nav-text: var(--text-secondary);
     --nav-hover: #fff;
-    --breadcrumb-color: #888;
+    --breadcrumb-color: var(--text-muted);
     --code-bg: #2a2a2a;
+    --code-block-bg: rgba(18, 18, 18, 0.78);
+    --code-border: #666666;
     --code-text: #e0e0e0;
-    --tag-list-color: #555555;
-    --tag-color: #777777;
+    --tag-list-color: var(--text-muted);
+    --tag-color: var(--text-secondary);
     --tag-hover: #ffffff;
     --toc-border: #333;
-    --toc-link: #666;
+    --toc-link: var(--text-muted);
     --toc-link-hover: #aaa;
     --toc-link-active: #fff;
     --table-border: rgba(255, 255, 255, 0.2);
@@ -47,12 +53,12 @@
     --tree-line: #777;
 
     /* Profile specific */
-    --section-label-color: #555555;
+    --section-label-color: var(--text-muted);
     --hero-title-color: #ffffff;
-    --tagline-color: #555555;
+    --tagline-color: var(--text-muted);
     --about-text-color: #999999;
     --interest-border: #2a2a2a;
-    --interest-text: #555555;
+    --interest-text: var(--text-muted);
     --interest-text-hover: #cccccc;
     --interest-border-hover: #555555;
     --skill-name-color: #cccccc;
@@ -60,30 +66,36 @@
     --timeline-border: #222222;
     --timeline-dot-bg: #333333;
     --timeline-dot-border: #555555;
-    --timeline-period-color: #555555;
+    --timeline-period-color: var(--text-muted);
     --timeline-place-color: #bbbbbb;
-    --timeline-desc-color: #555555;
-    --contact-service-color: #444444;
+    --timeline-desc-color: var(--text-muted);
+    --contact-service-color: var(--text-muted);
     --contact-handle-color: #aaaaaaaa;
-    --contact-service-hover: #666666;
+    --contact-service-hover: var(--text-secondary);
     --contact-handle-hover: #dddddd;
 }
 
 :root.light-mode {
     --bg-color: #ffffff;
     --text-color: #1a1a1a;
+    --text-secondary: #555555;
+    --text-muted: #666666;
+    --decorative-color: #cccccc;
+    --reading-veil: rgba(255, 255, 255, 0.94);
     --navbar-bg: #ffffff00;
     --logo-filter: none;
-    --nav-text: #555555;
+    --nav-text: var(--text-secondary);
     --nav-hover: #000000;
-    --breadcrumb-color: #666666;
+    --breadcrumb-color: var(--text-muted);
     --code-bg: #f3f3f3;
+    --code-block-bg: rgba(255, 255, 255, 0.82);
+    --code-border: #888888;
     --code-text: #1a1a1a;
-    --tag-list-color: #666666;
-    --tag-color: #555555;
+    --tag-list-color: var(--text-muted);
+    --tag-color: var(--text-secondary);
     --tag-hover: #000000;
     --toc-border: #dddddd;
-    --toc-link: #888888;
+    --toc-link: var(--text-muted);
     --toc-link-hover: #333333;
     --toc-link-active: #000000;
     --table-border: rgba(0, 0, 0, 0.15);
@@ -104,9 +116,9 @@
     --tree-line: #bbbbbb;
 
     /* Profile specific */
-    --section-label-color: #888888;
+    --section-label-color: var(--text-muted);
     --hero-title-color: #1a1a1a;
-    --tagline-color: #888888;
+    --tagline-color: var(--text-muted);
     --about-text-color: #444444;
     --interest-border: #dddddd;
     --interest-text: #666666;
@@ -117,10 +129,10 @@
     --timeline-border: #e0e0e0;
     --timeline-dot-bg: #ffffff;
     --timeline-dot-border: #bbbbbb;
-    --timeline-period-color: #888888;
+    --timeline-period-color: var(--text-muted);
     --timeline-place-color: #1a1a1a;
     --timeline-desc-color: #666666;
-    --contact-service-color: #777777;
+    --contact-service-color: var(--text-muted);
     --contact-handle-color: #333333;
     --contact-service-hover: #444444;
     --contact-handle-hover: #000000;
@@ -129,8 +141,9 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
-    font-family: "Ridibatang", sans-serif;
+    font-family: "NoonnuBasicGothic", sans-serif;
     font-size: 17px;
+    line-height: 1.75;
     transition:
         background-color 1.5s ease,
         color 1.5s ease;
@@ -154,26 +167,44 @@ main {
     padding-top: 120px !important;
     -webkit-mask-image: linear-gradient(
         to bottom,
-        transparent 0px,
-        transparent 80px,
-        black var(--mask-fade-end, 180px),
+        transparent var(--scroll-y, 0px),
+        transparent calc(var(--scroll-y, 0px) + 80px),
+        black calc(var(--scroll-y, 0px) + var(--mask-fade-end, 180px)),
         black 100%
     );
-    -webkit-mask-size: 100vw 100vh;
+    -webkit-mask-size: 100% 100%;
     -webkit-mask-repeat: no-repeat;
-
-    -webkit-mask-position: center var(--scroll-y, 0px);
+    -webkit-mask-position: top center;
 
     mask-image: linear-gradient(
         to bottom,
-        transparent 0px,
-        transparent 80px,
-        black var(--mask-fade-end, 180px),
+        transparent var(--scroll-y, 0px),
+        transparent calc(var(--scroll-y, 0px) + 80px),
+        black calc(var(--scroll-y, 0px) + var(--mask-fade-end, 180px)),
         black 100%
     );
-    mask-size: 100vw 100vh;
+    mask-size: 100% 100%;
     mask-repeat: no-repeat;
-    mask-position: center var(--scroll-y, 0px);
+    mask-position: top center;
+}
+
+.reading-layout main {
+    isolation: isolate;
+}
+
+.reading-layout main::before {
+    content: "";
+    position: absolute;
+    inset: 0 -5rem;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(
+        to right,
+        transparent 0,
+        var(--reading-veil) 5rem,
+        var(--reading-veil) calc(100% - 5rem),
+        transparent 100%
+    );
 }
 
 .nav-logo {
@@ -278,6 +309,7 @@ hr {
 
 h1 {
     font-size: 2.5rem;
+    line-height: 1.2;
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
     color: var(--hero-title-color);
@@ -297,12 +329,12 @@ h1 {
     max-width: 100%;
     overflow-x: auto;
     white-space: pre;
-    padding: 2.5rem 1.5rem 1.5rem 1.5rem;
-    background: transparent !important;
-    margin: 2.8rem 0;
-    cursor: pointer;
+    padding: 2.25rem 1.5rem 1.35rem;
+    background: var(--code-block-bg) !important;
+    margin: 2rem 0;
     position: relative;
-    border: none;
+    border: 1px solid var(--code-border);
+    border-radius: 2px;
 }
 
 #content pre[data-lang]::before {
@@ -310,7 +342,7 @@ h1 {
     position: absolute;
     top: 0.8rem;
     left: 1.5rem;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--breadcrumb-color);
     font-family: "Google Sans Code", monospace;
     text-transform: uppercase;
@@ -320,6 +352,24 @@ h1 {
 #content pre.copied[data-lang]::before {
     color: var(--nav-hover);
     font-weight: bold;
+}
+
+.code-copy-btn {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.75rem;
+    padding: 0.2rem 0.45rem;
+    border: 0;
+    background: transparent;
+    color: var(--breadcrumb-color);
+    font: 0.8rem/1.4 "Google Sans Code", monospace;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+
+.code-copy-btn:hover,
+.code-copy-btn:focus-visible {
+    color: var(--nav-hover);
 }
 
 #content code {
@@ -351,7 +401,7 @@ h1 {
 }
 
 #content li {
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.45rem;
 }
 
 #content li > ul,
@@ -367,9 +417,22 @@ h1 {
 #content h2,
 #content h3,
 #content h4 {
-    margin-top: 2rem;
-    margin-bottom: 1rem;
+    line-height: 1.35;
+    margin-top: 2.75rem;
+    margin-bottom: 0.9rem;
     color: var(--hero-title-color);
+}
+
+#content h3,
+#content h4 {
+    margin-top: 2.25rem;
+}
+
+#content blockquote {
+    margin: 1.75rem 0;
+    padding-left: 1rem;
+    border-left: 1px solid var(--decorative-color);
+    color: var(--text-secondary);
 }
 
 @media (max-width: 768px) {
@@ -397,6 +460,17 @@ h1 {
         gap: 0.3rem;
     }
 
+    .reading-layout main::before {
+        inset: 0 -1.5rem;
+        background: linear-gradient(
+            to right,
+            transparent 0,
+            var(--reading-veil) 1.5rem,
+            var(--reading-veil) calc(100% - 1.5rem),
+            transparent 100%
+        );
+    }
+
     .desktop-text {
         display: none;
     }
@@ -410,6 +484,14 @@ h1 {
 .bc-toc-link:hover {
     color: var(--nav-hover) !important;
     text-decoration: underline !important;
+}
+
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--nav-hover);
+    outline-offset: 4px;
 }
 
 body {
@@ -503,7 +585,7 @@ mark {
 }
 #floating-tree {
     display: none;
-    font-family: Ridibatang;
+    font-family: "NoonnuBasicGothic", sans-serif;
 }
 @media (min-width: 1200px) {
     main {
@@ -635,7 +717,7 @@ mark {
 }
 
 .tree-view {
-    font-family: Ridibatang;
+    font-family: "NoonnuBasicGothic", sans-serif;
     font-size: 0.95rem;
     color: var(--tree-color);
     margin-top: 1rem;
@@ -768,4 +850,15 @@ mark {
     height: auto;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     border: 1px solid var(--pdf-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
 }

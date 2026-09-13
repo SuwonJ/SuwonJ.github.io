@@ -1,56 +1,15 @@
 import { renderNavbar } from "/components/navbar.js";
 import { HalftoneBackground } from "../components/halftone.js";
-import { fetchPostsByTag, fetchPostById, fetchPostComments } from "../components/mastodon.js";
-
-// 순수 텍스트 정규화 (HTML 태그 제거, 공백 및 줄바꿈 통일)
-function getCanonicalText(htmlContent, postId) {
-  const plainText = (htmlContent || "")
-    .replace(/<[^>]*>/g, '') // 모든 HTML 태그 제거
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\r\n/g, '\n')  // 줄바꿈 규격 통일
-    .trim();                 // 양끝 여백 제거
-    
-  return plainText + ":" + (postId || "");
-}
-
-async function computeSha256(text) {
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  } catch (e) {
-    return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-  }
-}
-
-// 답글(댓글) 목록에서 작성자가 게시한 sha256 해시값 추출
-function extractServerHashFromComments(comments) {
-  for (const c of comments) {
-    const cleanText = (c.contentHtml || "").replace(/<[^>]*>/g, '');
-    const match = cleanText.match(/(?:sha256|hash|sig)\s*:\s*([a-fA-F0-9]{8,64})/i) || cleanText.match(/\b([a-fA-F0-9]{64})\b/);
-    if (match) {
-      return match[1].toLowerCase();
-    }
-  }
-  return null;
-}
+import { fetchPostsByTag, fetchPostById } from "../components/mastodon.js";
+import { ensureCodeHighlighting, ensureMarkdown } from "../components/content-dependencies.js";
+import { commentsPlaceholder, renderComments } from "../components/comments.js";
 
 async function init() {
-  if (typeof window.markedKatex === "function") {
-    marked.use(window.markedKatex({ throwOnError: false, nonStandard: true }));
-  }
-
   renderNavbar();
   const blogBg = new HalftoneBackground("halftone-canvas", {
     iconSrc: null,
     boundarySelectors: [".navbar", "hr"],
-    buttonSelectors: ["#content pre"]
+    maxFps: 24
   });
   window.blogBg = blogBg;
   blogBg.init();
@@ -116,7 +75,8 @@ async function renderPost(id, container) {
     markdownText = markdownText.replace(/([^\n])\s*\$\$/g, "$1\n\n$$$$");
     markdownText = markdownText.replace(/\$\$\s*([^\n])/g, "$$$$\n\n$1");
 
-    let parsedHtml = marked.parse(markdownText);
+    await ensureMarkdown(markdownText);
+    let parsedHtml = window.marked.parse(markdownText);
 
     // 미디어 첨부파일 렌더링 (사진/영상)
     if (post.media && post.media.length > 0) {
@@ -124,9 +84,9 @@ async function renderPost(id, container) {
         <div class="post-media-gallery" style="display:grid; gap:1rem; margin:1.5rem 0;">
           ${post.media.map(m => {
             if (m.type === 'image') {
-              return `<img src="${m.url}" alt="${m.description || ''}" style="max-width:100%; border-radius:8px; cursor:zoom-in;" />`;
+              return `<img src="${m.url}" alt="${m.description || ''}" loading="lazy" decoding="async" style="max-width:100%; border-radius:8px; cursor:zoom-in;" />`;
             } else if (m.type === 'video' || m.type === 'gifv') {
-              return `<video src="${m.url}" controls style="max-width:100%; border-radius:8px;"></video>`;
+              return `<video src="${m.url}" controls preload="metadata" style="max-width:100%; border-radius:8px;"></video>`;
             }
             return '';
           }).join('')}
@@ -135,130 +95,22 @@ async function renderPost(id, container) {
       parsedHtml += mediaHtml;
     }
 
-    // 실시간 댓글 목록 불러오기
-    const comments = await fetchPostComments(id);
-
-    // 통합 댓글 & 검증 툴바 섹션
-    const unifiedCommentsSectionHtml = `
-      <div class="mastodon-comments-section" style="margin-top: 4rem; padding-top: 1.8rem; border-top: 1px solid var(--toc-border, #333);">
-        
-        <!-- 미니 툴바 (댓글 수 + '+' 추가 버튼 + ✔ Check 뱃지) -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem; font-family:monospace;">
-          <div style="display:flex; align-items:center; gap:0.8rem;">
-            <span style="font-size:0.9rem; font-weight:bold; color:var(--text-color); display:inline-flex; align-items:center; gap:0.4rem;">
-              <span class="material-symbols-outlined" style="font-size:18px;">chat_bubble</span>
-              <span>${comments.length}</span>
-            </span>
-            <a href="${post.url}" target="_blank" rel="noopener noreferrer" title="Maximux에서 댓글 작성 (해시 등록 가능)" style="font-size:0.85rem; color:var(--breadcrumb-color, #aaa); text-decoration:none; display:inline-flex; align-items:center;">
-              <span class="material-symbols-outlined" style="font-size:18px;">add</span>
-            </a>
-          </div>
-
-          <!-- 클릭 시에만 온디맨드로 대조 검증을 수행하는 버튼 -->
-          <button type="button" id="btn-toggle-sig" title="클릭하여 댓글 등록 해시 ↔ 본문 순수 텍스트 해시 1:1 대조 검증" style="background:transparent; border:none; color:var(--breadcrumb-color, #888); font-family:monospace; font-size:0.78rem; cursor:pointer; display:inline-flex; align-items:center; gap:0.25rem; padding:0;">
-            <span class="material-symbols-outlined" style="font-size:15px; color:#4ade80;">verified</span>
-            <span>Check Integrity</span>
-          </button>
-        </div>
-
-        <!-- 클릭 시 동적으로 대조 렌더링되는 2줄 카드가 들어갈 컨테이너 -->
-        <div id="sig-info-card" style="display:none; margin-bottom:1.5rem; padding:0.6rem 0.8rem; background:rgba(0,0,0,0.25); border:1px solid var(--toc-border, #333); border-radius:6px; font-family:monospace; font-size:0.78rem; line-height:1.5; color:var(--breadcrumb-color, #888);">
-          <!-- 동적 검증 결과가 렌더링됨 -->
-        </div>
-
-        ${comments.length === 0 ? `
-          <div style="padding: 1rem 0; font-family: monospace; font-size: 0.85rem; color: var(--breadcrumb-color, #888);">
-            아직 작성된 댓글이 없습니다. <a href="${post.url}" target="_blank" rel="noopener noreferrer" style="color:var(--text-color); text-decoration:underline;">+ 첫 댓글 작성하기 (해시 등록 가능) ↗</a>
-          </div>
-        ` : `
-          <div class="comments-list" style="display:flex; flex-direction:column;">
-            ${comments.map((c, idx) => {
-              const fullAcct = c.account.acct.includes('@') ? `@${c.account.acct}` : `@${c.account.acct}@maximux.suwonmars.com`;
-              return `
-                <!-- 아바타 정중앙을 관통하는 세로 스레드 연결선 -->
-                <div class="thread-connector-line" style="width:2px; height:24px; background:var(--toc-border, #333); margin-left:17px; margin-top:${idx === 0 ? '0.2rem' : '0.6rem'}; margin-bottom:0.6rem;"></div>
-                
-                <div class="comment-item">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.6rem;">
-                    <div style="display:flex; align-items:center; gap:0.75rem;">
-                      <img src="${c.account.avatar}" alt="${c.account.displayName}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0;" />
-                      <div style="display:flex; flex-direction:column; line-height:1.3; font-family:monospace;">
-                        <a href="${c.account.url}" target="_blank" rel="noopener noreferrer" style="color:var(--text-color); font-weight:bold; text-decoration:none; font-size:0.9rem;">
-                          ${c.account.displayName}
-                        </a>
-                        <span style="color:var(--breadcrumb-color, #888); font-size:0.78rem;">${fullAcct}</span>
-                      </div>
-                    </div>
-                    <span style="color:var(--breadcrumb-color, #888); font-size:0.75rem; font-family:monospace;">${c.createdAt}</span>
-                  </div>
-                  <div class="comment-body" style="line-height:1.6; color:var(--text-color); font-size:0.92rem; padding-left:2.85rem;">
-                    ${c.contentHtml}
-                  </div>
-                  ${c.media.length > 0 ? `
-                    <div style="display:flex; gap:0.5rem; margin-top:0.6rem; padding-left:2.85rem;">
-                      ${c.media.map(m => `<img src="${m.url}" alt="" style="max-width:160px; max-height:160px; border-radius:6px;" />`).join('')}
-                    </div>
-                  ` : ''}
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `}
-      </div>
-    `;
-
-    parsedHtml += unifiedCommentsSectionHtml;
+    parsedHtml += commentsPlaceholder();
 
     container.innerHTML = parsedHtml;
-
-    // 드롭다운 버튼 클릭 시에만 '온디맨드(On-demand)'로 1:1 대조 검증 수행!
-    const btnToggleSig = document.getElementById("btn-toggle-sig");
-    const sigInfoCard = document.getElementById("sig-info-card");
-    
-    if (btnToggleSig && sigInfoCard) {
-      btnToggleSig.addEventListener("click", async () => {
-        const isHidden = sigInfoCard.style.display === "none";
-        
-        if (isHidden) {
-          sigInfoCard.style.display = "block";
-          sigInfoCard.innerHTML = `<span style="color:#aaa;">⌛ 마스토돈 댓글 해시 대조 중...</span>`;
-
-          // 1. 순수 텍스트 정규화 기반 실시간 SHA-256 해시 계산
-          const canonicalInput = getCanonicalText(post.content || post.markdown, post.id);
-          const computedHash = await computeSha256(canonicalInput);
-          
-          // 2. 답글(댓글) 재조회 및 작성자가 올린 해시 추출
-          const latestComments = await fetchPostComments(id);
-          const serverHashInComment = extractServerHashFromComments(latestComments);
-
-          if (serverHashInComment) {
-            // 접두사/전체 해시 매칭 검사
-            const isMatch = computedHash.toLowerCase().startsWith(serverHashInComment.toLowerCase()) || 
-                            serverHashInComment.toLowerCase().startsWith(computedHash.substring(0, 8).toLowerCase());
-
-            const statusText = isMatch 
-              ? `<span style="color:#4ade80; font-weight:bold;">MATCHED ✔ (순수 텍스트 무결성 검증 완료)</span>`
-              : `<span style="color:#fc5c65; font-weight:bold;">MISMATCH ❌ (위변조 또는 해시 불일치)</span>`;
-
-            sigInfoCard.innerHTML = `
-              <div><strong style="color:var(--text-color);">Comment Hash:</strong> <code>${serverHashInComment}</code> (마스토돈 답글 기록)</div>
-              <div style="word-break:break-all;"><strong style="color:var(--text-color);">Computed Hash:</strong> <code>${computedHash}</code></div>
-              <div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--toc-border, #333);"><strong style="color:var(--text-color);">Verification:</strong> ${statusText}</div>
-            `;
-          } else {
-            sigInfoCard.innerHTML = `
-              <div><strong style="color:var(--text-color);">Computed Hash:</strong> <code style="color:#38bdf8;">${computedHash}</code></div>
-              <div style="margin-top:0.4rem; color:var(--breadcrumb-color, #888); font-size:0.75rem;">
-                💡 <strong>해시 생성 규격:</strong> 마스토돈 포스트의 순수 텍스트(HTML 태그 제거) + <code>:${post.id}</code><br/>
-                마스토돈 답글에 <code>sha256: ${computedHash.substring(0, 8)}</code> 형태로 작성하시면 실시간 대조됩니다.
-              </div>
-            `;
-          }
-        } else {
-          sigInfoCard.style.display = "none";
-        }
-      });
+    const commentsRoot = container.querySelector("[data-comments-root]");
+    if (commentsRoot) {
+      void renderComments(id, post, commentsRoot)
+        .then(() => window.blogBg?.scanTargets())
+        .catch(error => console.error("Failed to render comments:", error));
     }
+
+    // 첫 본문 이미지는 즉시 표시하고, 나머지는 스크롤 직전에만 디코딩한다.
+    container.querySelectorAll("img").forEach((image, index) => {
+      image.decoding = "async";
+      image.loading = index === 0 ? "eager" : "lazy";
+      if (index === 0) image.fetchPriority = "high";
+    });
 
     // 테이블 반응형 래핑
     container.querySelectorAll('table').forEach(table => {
@@ -268,30 +120,38 @@ async function renderPost(id, container) {
       wrapper.appendChild(table);
     });
 
-    // Highlight.js 적용 및 코드 복사 기능
-    container.querySelectorAll('pre code').forEach((block) => {
+    // 코드가 있는 문서에서만 Highlight.js와 코드 폰트 로드
+    const codeBlocks = Array.from(container.querySelectorAll('pre code'));
+    if (codeBlocks.length > 0) await ensureCodeHighlighting();
+    codeBlocks.forEach((block) => {
       const pre = block.parentElement;
       const langMatch = block.className.match(/language-(\w+)/);
       if (langMatch && langMatch[1]) {
         pre.setAttribute('data-lang', langMatch[1].toUpperCase());
       }
-      if (typeof hljs !== 'undefined') hljs.highlightElement(block);
+      if (window.hljs) window.hljs.highlightElement(block);
     });
 
     container.querySelectorAll('pre').forEach(pre => {
-      pre.addEventListener('click', async () => {
-        const selection = window.getSelection().toString();
-        if (selection && selection.length > 0) return;
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'code-copy-btn';
+      copyButton.textContent = 'COPY';
+      copyButton.setAttribute('aria-label', '코드 복사');
+      pre.appendChild(copyButton);
+
+      copyButton.addEventListener('click', async () => {
         const codeText = pre.querySelector('code')?.innerText || pre.innerText;
         try {
           await navigator.clipboard.writeText(codeText);
-          if (window.blogBg) window.blogBg.pulseButton(pre);
           const originalLang = pre.getAttribute('data-lang') || '';
           pre.setAttribute('data-lang', 'COPIED!');
           pre.classList.add('copied');
+          copyButton.textContent = 'COPIED';
           setTimeout(() => {
             pre.setAttribute('data-lang', originalLang);
             pre.classList.remove('copied');
+            copyButton.textContent = 'COPY';
           }, 1500);
         } catch (err) {
           console.error('Failed to copy', err);
@@ -381,12 +241,12 @@ async function renderPost(id, container) {
       document.body.appendChild(lightbox);
       lightbox.addEventListener("click", () => lightbox.classList.remove("active"));
     }
-    container.querySelectorAll("img").forEach(img => {
-      img.addEventListener("click", () => {
-        const lightboxImg = lightbox.querySelector("img");
-        lightboxImg.src = img.src;
-        lightbox.classList.add("active");
-      });
+    container.addEventListener("click", event => {
+      const image = event.target.closest("img");
+      if (!image || !container.contains(image)) return;
+      const lightboxImg = lightbox.querySelector("img");
+      lightboxImg.src = image.currentSrc || image.src;
+      lightbox.classList.add("active");
     });
 
   } catch (error) {
@@ -494,7 +354,7 @@ const updateScrollMask = () => {
     mainEl.style.setProperty("--mask-fade-end", `${fadeEnd}px`);
   }
 };
-window.addEventListener("scroll", updateScrollMask);
+window.addEventListener("scroll", updateScrollMask, { passive: true });
 updateScrollMask();
 
 init();
