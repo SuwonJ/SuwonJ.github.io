@@ -1,8 +1,9 @@
-const CACHE_NAME = 'sulog-write-v1';
+const CACHE_NAME = 'sulog-write-v2';
 const APP_SHELL = [
   '/write/',
   '/write/index.html',
   '/write/write.js',
+  '/write/editor.js',
   '/admin/index.html',
   '/admin/admin.js',
   '/components/mastodon_oauth.js',
@@ -32,7 +33,7 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
 
-  // API는 캐시하지 않는다. 앱 코드/폰트/CDN 자원은 stale-while-revalidate.
+  // API/OAuth는 캐시하지 않는다. 앱 코드/폰트/CDN/CodeMirror 모듈은 stale-while-revalidate.
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/oauth/')) return;
 
   event.respondWith((async () => {
