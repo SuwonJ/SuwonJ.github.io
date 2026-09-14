@@ -8,7 +8,8 @@
     <!-- Modern Typography & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Google+Sans+Code:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
     <!-- KaTeX & Highlight.js CDN -->
@@ -20,6 +21,13 @@
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
     <style>
+        @font-face {
+            font-family: "NoonnuBasicGothic";
+            src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noon-2410@1.0/NoonnuBasicGothicRegular.woff2") format("woff2");
+            font-weight: normal;
+            font-display: swap;
+        }
+
         :root {
             --bg-main: #0f172a;
             --bg-card: #1e293b;
@@ -30,8 +38,9 @@
             --accent-blue: #38bdf8;
             --accent-green: #4ade80;
             --accent-red: #f87171;
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-mono: 'Fira Code', monospace;
+            --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            --font-gothic: 'NoonnuBasicGothic', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-code: 'Google Sans Code', 'Fira Code', monospace;
         }
 
         * {
@@ -137,11 +146,329 @@
             border-color: #0284c7;
         }
 
+        .btn-danger {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--accent-red);
+            border-color: rgba(248, 113, 113, 0.4);
+        }
+
+        .btn-danger:hover {
+            background: var(--accent-red);
+            color: #0f172a;
+        }
+
         /* Main Workspace Split View */
         .workspace {
             display: flex;
             flex: 1;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Sidebar Styles */
+        .posts-sidebar {
+            width: 320px;
+            background: #111827;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        .posts-sidebar.collapsed {
+            width: 0;
+            border-right: none;
+        }
+
+        .sidebar-header {
+            height: 48px;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-card);
+            flex-shrink: 0;
+        }
+
+        .sidebar-title {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .sidebar-search {
+            padding: 0.5rem 0.8rem;
+            background: var(--bg-main);
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar-search .search-icon {
+            position: absolute;
+            left: 1.2rem;
+            color: var(--text-muted);
+            font-size: 18px;
+            pointer-events: none;
+        }
+
+        .sidebar-search input {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-main);
+            padding: 0.4rem 0.6rem 0.4rem 2rem;
+            font-size: 0.8rem;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .sidebar-search input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .posts-filter-tabs {
+            display: flex;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.3rem 0.5rem;
+            gap: 0.3rem;
+            flex-shrink: 0;
+        }
+
+        .filter-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            text-align: center;
+        }
+
+        .filter-tab:hover {
+            color: var(--text-main);
+            background: var(--bg-hover);
+        }
+
+        .filter-tab.active {
+            background: var(--bg-main);
+            color: var(--accent-blue);
+        }
+
+        .posts-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .posts-empty, .posts-loading {
+            padding: 2rem 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .post-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.7rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .post-card:hover {
+            border-color: var(--accent-blue);
+            background: #233044;
+        }
+
+        .post-card.active-editing {
+            border-color: var(--accent-blue);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .post-card-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .post-badge-group {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .badge-tag {
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .badge-research {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c084fc;
+        }
+
+        .badge-draft {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .post-card-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-main);
+            line-height: 1.4;
+            word-break: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .post-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.2rem;
+            padding-top: 0.35rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .post-card-tags {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px;
+        }
+
+        .post-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .card-action-btn {
+            padding: 0.2rem 0.45rem;
+            font-size: 0.72rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .card-action-btn:hover {
+            color: var(--text-main);
+            background: var(--bg-hover);
+        }
+
+        .card-action-btn.delete-btn:hover {
+            color: var(--accent-red);
+            border-color: var(--accent-red);
+        }
+
+        /* Edit Mode Banner */
+        .edit-mode-banner {
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.15), rgba(99, 102, 241, 0.15));
+            border-bottom: 1px solid var(--accent-blue);
+            padding: 0.5rem 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            flex-shrink: 0;
+        }
+
+        .banner-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent-blue);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .banner-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        /* Draft Toggle Button / Checkbox */
+        .draft-toggle-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .draft-toggle-label input {
+            display: none;
+        }
+
+        .draft-toggle-box {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            transition: all 0.15s;
+        }
+
+        .draft-toggle-label input:checked + .draft-toggle-box {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: #f59e0b;
+            color: #fbbf24;
+            font-weight: 600;
         }
 
         .pane {
@@ -150,6 +477,7 @@
             flex-direction: column;
             overflow: hidden;
             border-right: 1px solid var(--border-color);
+            min-width: 320px;
         }
 
         .pane:last-child {
@@ -170,10 +498,12 @@
             display: flex;
             gap: 1rem;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .input-title {
             flex: 1;
+            min-width: 250px;
             background: transparent;
             border: none;
             border-bottom: 2px solid var(--border-color);
@@ -182,7 +512,7 @@
             font-weight: 600;
             padding: 0.4rem 0;
             outline: none;
-            font-family: inherit;
+            font-family: var(--font-sans);
             transition: border-color 0.2s;
         }
 
@@ -222,7 +552,7 @@
             padding: 0.45rem 0.8rem;
             font-size: 0.85rem;
             outline: none;
-            font-family: var(--font-mono);
+            font-family: var(--font-sans);
         }
 
         /* Formatting Toolbar */
@@ -263,7 +593,7 @@
             margin: 0 0.4rem;
         }
 
-        /* Textarea Editor */
+        /* Textarea Editor (고딕 폰트 적용) */
         .editor-container {
             flex: 1;
             position: relative;
@@ -274,15 +604,16 @@
             width: 100%;
             height: 100%;
             background: var(--bg-main);
-            color: var(--text-main);
+            color: #f1f5f9;
             border: none;
             padding: 1.5rem;
-            font-family: var(--font-mono);
-            font-size: 0.95rem;
-            line-height: 1.7;
+            font-family: var(--font-sans);
+            font-size: 1.05rem;
+            line-height: 1.8;
             resize: none;
             outline: none;
             tab-size: 2;
+            letter-spacing: -0.01em;
         }
 
         /* Drop Overlay */
@@ -294,7 +625,7 @@
             display: none;
             align-items: center;
             justify-content: center;
-            font-family: var(--font-mono);
+            font-family: var(--font-sans);
             color: var(--accent-blue);
             font-size: 1.1rem;
             font-weight: 600;
@@ -306,7 +637,7 @@
             display: flex;
         }
 
-        /* Live Preview Pane */
+        /* Live Preview Pane (실제 블로그 사이트 스타일 완벽 재현) */
         .preview-header {
             height: 42px;
             background: var(--bg-card);
@@ -322,47 +653,201 @@
 
         .preview-body {
             flex: 1;
-            padding: 2rem;
+            padding: 2.5rem 3rem;
             overflow-y: auto;
-            background: var(--bg-main);
-            line-height: 1.8;
+            background: #121212 !important; /* 실제 블로그 배경색 */
+            color: #e0e0e0 !important;     /* 실제 블로그 글자색 */
+            font-family: var(--font-gothic);
+            font-size: 17px;
+            line-height: 1.75;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
-        /* Custom Preview Styles */
-        .preview-body h1, .preview-body h2, .preview-body h3 {
-            margin-top: 1.5rem;
-            margin-bottom: 0.8rem;
-            color: #f8fafc;
+        /* Site Content Reproduction in Preview */
+        #preview-title {
+            font-family: var(--font-gothic);
+            font-size: 2.3rem;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-top: 0.5rem;
+            margin-bottom: 0.4rem;
+            color: #ffffff !important;
+            letter-spacing: -0.02em;
         }
+
+        #preview-tags {
+            margin-bottom: 2rem;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            color: #8a8a8a;
+        }
+
+        .preview-body h1, 
+        .preview-body h2, 
+        .preview-body h3, 
+        .preview-body h4 {
+            font-family: var(--font-gothic);
+            color: #ffffff !important;
+            font-weight: 700;
+        }
+
+        .preview-body h1 {
+            font-size: 2.1rem;
+            line-height: 1.25;
+            margin-top: 2.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .preview-body h2 {
+            font-size: 1.65rem;
+            line-height: 1.35;
+            margin-top: 2.75rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .preview-body h3 {
+            font-size: 1.3rem;
+            line-height: 1.35;
+            margin-top: 2.25rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .preview-body h4 {
+            font-size: 1.15rem;
+            line-height: 1.35;
+            margin-top: 1.8rem;
+            margin-bottom: 0.7rem;
+        }
+
         .preview-body p {
             margin-bottom: 1rem;
-            color: #cbd5e1;
+            color: #e0e0e0;
         }
+
+        .preview-body a {
+            color: #e0e0e0;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .preview-body a:hover {
+            color: #ffffff;
+        }
+
         .preview-body code {
-            font-family: var(--font-mono);
-            background: #1e293b;
+            font-family: var(--font-code);
+            background: #2a2a2a !important;
+            color: #e0e0e0 !important;
             padding: 0.2rem 0.4rem;
             border-radius: 4px;
-            color: #38bdf8;
+            font-size: 0.9em;
+            word-break: break-all;
         }
+
         .preview-body pre {
-            background: #1e293b;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
+            background: rgba(18, 18, 18, 0.78) !important;
+            border: 1px solid #666666 !important;
+            border-radius: 2px;
+            padding: 2.25rem 1.5rem 1.35rem;
+            margin: 2rem 0;
+            position: relative;
             overflow-x: auto;
+            max-width: 100%;
         }
+
+        .preview-body pre[data-lang]::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0.8rem;
+            left: 1.5rem;
+            font-size: 0.8rem;
+            color: #8a8a8a;
+            font-family: var(--font-code);
+            text-transform: uppercase;
+        }
+
+        .preview-body pre code {
+            background: transparent !important;
+            color: #e0e0e0 !important;
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.95em;
+            line-height: 1.5;
+            font-family: var(--font-code);
+        }
+
         .preview-body blockquote {
-            border-left: 4px solid #38bdf8;
+            margin: 1.75rem 0;
             padding-left: 1rem;
-            color: #94a3b8;
-            margin: 1rem 0;
+            border-left: 1px solid #555555;
+            color: #a0a0a0;
         }
+
         .preview-body mark {
-            background: rgba(251, 191, 36, 0.25);
-            color: #fbbf24;
-            padding: 0.1rem 0.3rem;
-            border-radius: 3px;
+            background-color: #cceeff !important;
+            color: #000000 !important;
+            border-radius: 0.25rem;
+            padding: 0.15rem 0.3rem;
+        }
+
+        .preview-body ul, .preview-body ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preview-body li {
+            margin-bottom: 0.45rem;
+            color: #e0e0e0;
+        }
+
+        .preview-body hr {
+            margin: 2rem 0;
+            border: none;
+            border-top: 1px solid #333333;
+        }
+
+        .preview-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+
+        .preview-body .table-wrapper {
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+
+        .preview-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+
+        .preview-body th, .preview-body td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.6rem 0.9rem;
+            text-align: left;
+        }
+
+        .preview-body th {
+            background: rgba(255, 255, 255, 0.04);
+            color: #ffffff;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.35);
+            font-weight: 600;
+        }
+
+        .preview-body tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .preview-body .katex-display {
+            overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
+            margin: 1.5rem 0;
         }
 
         /* Status Footer */
@@ -409,26 +894,85 @@
 
     <!-- Header -->
     <header class="app-header">
-        <a href="/admin/" class="brand-logo">
-            <span>Sulog Studio</span>
-            <span class="badge">PRO CMS</span>
-        </a>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" id="btn-toggle-sidebar" class="btn" title="게시글 목록 열기/닫기" style="padding: 0.35rem 0.6rem;">
+                <span id="icon-toggle-sidebar" class="material-symbols-outlined" style="font-size: 19px;">menu_open</span>
+                <span class="btn-text" style="font-size: 0.8rem;">글 목록</span>
+                <span id="posts-count-badge" class="badge" style="display: none; padding: 0.1rem 0.4rem; font-size: 0.7rem;">0</span>
+            </button>
+            <a href="/admin/" class="brand-logo">
+                <span>Sulog Studio</span>
+                <span class="badge">PRO CMS</span>
+            </a>
+        </div>
 
         <div class="header-actions">
+            <button type="button" id="btn-new-post" class="btn" title="새 글 작성 모드" style="display: none;">
+                <span class="material-symbols-outlined" style="font-size: 17px; color: var(--accent-green);">add_circle</span>
+                <span>새 글 쓰기</span>
+            </button>
             <div id="user-chip-container">
                 <div class="user-chip">로그인 확인 중...</div>
             </div>
             <button type="button" id="btn-publish" class="btn btn-primary">
-                <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
-                발행하기
+                <span id="btn-publish-icon" class="material-symbols-outlined" style="font-size: 18px;">send</span>
+                <span id="btn-publish-label">발행하기</span>
             </button>
         </div>
     </header>
 
     <!-- Main Workspace -->
     <main class="workspace">
-        <!-- Editor Pane -->
+        <!-- 1. Posts Sidebar -->
+        <aside id="posts-sidebar" class="posts-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">
+                    <span class="material-symbols-outlined" style="font-size: 19px; color: var(--accent-blue);">list_alt</span>
+                    <span>게시글 관리</span>
+                </div>
+                <button type="button" id="btn-refresh-posts" class="tool-btn" title="목록 새로고침">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
+                </button>
+            </div>
+
+            <!-- Search input -->
+            <div class="sidebar-search">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="posts-search" placeholder="제목/태그 검색..." />
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="posts-filter-tabs">
+                <button type="button" class="filter-tab active" data-filter="all">전체</button>
+                <button type="button" class="filter-tab" data-filter="blog">#blog</button>
+                <button type="button" class="filter-tab" data-filter="research">#research</button>
+                <button type="button" class="filter-tab" data-filter="tmp">#tmp (임시)</button>
+            </div>
+
+            <!-- Posts List Scroll Area -->
+            <div id="posts-list" class="posts-list">
+                <div class="posts-loading">게시글 목록을 불러오는 중...</div>
+            </div>
+        </aside>
+
+        <!-- 2. Editor Pane -->
         <div class="pane">
+            <!-- Edit Mode Banner (visible only when editing existing post) -->
+            <div id="edit-mode-banner" class="edit-mode-banner" style="display: none;">
+                <div class="banner-info">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">edit_note</span>
+                    <span><strong>[수정 중]</strong> <span id="editing-post-title">포스트</span> (<span id="editing-post-id" style="font-family: var(--font-mono); font-size: 0.78rem;"></span>)</span>
+                </div>
+                <div class="banner-actions">
+                    <button type="button" id="btn-delete-current" class="btn btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        <span class="material-symbols-outlined" style="font-size: 15px;">delete</span> 삭제
+                    </button>
+                    <button type="button" id="btn-cancel-edit" class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        취소 (새 글 쓰기)
+                    </button>
+                </div>
+            </div>
+
             <div class="config-bar">
                 <div class="input-row">
                     <input type="text" id="input-title" class="input-title" placeholder="제목을 입력하세요..." autofocus>
@@ -436,6 +980,7 @@
                     <div class="cat-selector">
                         <div class="cat-opt active" data-cat="blog">#blog</div>
                         <div class="cat-opt" data-cat="research">#research</div>
+                        <div class="cat-opt" data-cat="tmp" style="color: #fbbf24;">#tmp (임시)</div>
                     </div>
                 </div>
 
@@ -472,7 +1017,7 @@
             </div>
         </div>
 
-        <!-- Preview Pane -->
+        <!-- 3. Preview Pane -->
         <div class="pane">
             <div class="preview-header">
                 <span>LIVE PREVIEW</span>

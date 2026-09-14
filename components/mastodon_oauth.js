@@ -47,8 +47,39 @@ export function logout() {
   window.location.href = REDIRECT_URI;
 }
 
+export async function getOrRegisterApp() {
+  let clientId = getStoredClientId();
+  if (clientId) return clientId;
+
+  const body = new URLSearchParams();
+  body.set("client_name", "Sulog Studio");
+  body.set("redirect_uris", REDIRECT_URI);
+  body.set("scopes", SCOPES);
+  body.set("website", window.location.origin);
+
+  const res = await fetch(`${INSTANCE_URL}/api/v1/apps`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`앱 자동 등록 실패: ${errText}`);
+  }
+
+  const appData = await res.json();
+  setStoredClientId(appData.client_id);
+  if (appData.client_secret) {
+    localStorage.setItem("mastodon_client_secret", appData.client_secret);
+  }
+  return appData.client_id;
+}
+
 export async function initiateOAuth(clientId) {
-  if (!clientId) throw new Error("Client Key가 필요합니다.");
+  if (!clientId) {
+    clientId = await getOrRegisterApp();
+  }
   setStoredClientId(clientId);
   
   const verifier = generateRandomString(64);
@@ -78,6 +109,10 @@ export async function handleOAuthCallback() {
   const body = new URLSearchParams();
   body.set("grant_type", "authorization_code");
   body.set("client_id", clientId);
+  const clientSecret = localStorage.getItem("mastodon_client_secret");
+  if (clientSecret) {
+    body.set("client_secret", clientSecret);
+  }
   body.set("code", code);
   body.set("redirect_uri", REDIRECT_URI);
   body.set("code_verifier", verifier);
@@ -91,7 +126,7 @@ export async function handleOAuthCallback() {
 
   if (!res.ok) {
     console.error("Token exchange failed", await res.text());
-    alert("OAuth 인증 실패: Redirect URI 또는 Client Key를 확인해 보세요.");
+    alert("OAuth 인증 실패: 인증 정보를 확인해 주세요.");
     return false;
   }
 
@@ -166,3 +201,77 @@ export async function postStatus({ statusText, spoilerText, mediaIds = [] }) {
 
   return await res.json();
 }
+
+export async function updateStatus({ id, statusText, spoilerText, mediaIds = [] }) {
+  const token = getStoredToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+
+  const body = new URLSearchParams();
+  body.set("status", statusText);
+  if (spoilerText !== undefined) body.set("spoiler_text", spoilerText);
+  if (mediaIds && mediaIds.length > 0) {
+    mediaIds.forEach(mediaId => body.append("media_ids[]", mediaId));
+  }
+
+  const res = await fetch(`${INSTANCE_URL}/api/v1/statuses/${id}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Post update failed: ${errText}`);
+  }
+
+  return await res.json();
+}
+
+export async function deleteStatus(id) {
+  const token = getStoredToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+
+  const res = await fetch(`${INSTANCE_URL}/api/v1/statuses/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Post deletion failed: ${errText}`);
+  }
+
+  return await res.json();
+}
+
+export async function fetchMyStatuses({ limit = 40, maxId = null } = {}) {
+  const token = getStoredToken();
+  if (!token) throw new Error("로그인이 필요합니다.");
+
+  const user = await fetchAccountInfo();
+  if (!user || !user.id) throw new Error("사용자 정보를 불러올 수 없습니다.");
+
+  let url = `${INSTANCE_URL}/api/v1/accounts/${user.id}/statuses?exclude_reblogs=true&exclude_replies=true&limit=${limit}`;
+  if (maxId) {
+    url += `&max_id=${maxId}`;
+  }
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch statuses: ${errText}`);
+  }
+
+  return await res.json();
+}
+

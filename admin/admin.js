@@ -4,16 +4,25 @@ import {
   fetchAccountInfo,
   logout,
   getStoredToken,
-  getStoredClientId,
-  setStoredClientId,
   uploadMediaFile,
   postStatus,
+  updateStatus,
+  deleteStatus,
+  fetchMyStatuses,
   REDIRECT_URI
 } from "../components/mastodon_oauth.js";
 
-let selectedCategory = "blog";
+import { parseMastodonStatus } from "../components/mastodon.js";
+import { ensureMarkdown } from "../components/content-dependencies.js";
+
+let selectedCategory = "blog"; // "blog" | "research" | "tmp"
 let uploadedMediaIds = [];
 let autoSaveTimer = null;
+let previewDebounceTimer = null;
+let currentEditingPost = null; // null: 신규 작성 모드, object: 수정 모드
+let postsCache = [];
+let activeFilter = "all";
+let searchKeyword = "";
 
 async function initAdminStudio() {
   // OAuth 콜백 처리
@@ -33,46 +42,48 @@ async function initAdminStudio() {
   setupDragAndDrop();
   setupPublishing();
   setupShortcuts();
+  setupSidebar();
 
   // 이전 임시저장(Draft) 복원
   loadDraft();
+
+  // 로그인 상태라면 포스트 목록 로드
+  const token = getStoredToken();
+  if (token) {
+    loadPostsList();
+  }
 }
 
 async function initAuth() {
   const userChipContainer = document.getElementById("user-chip-container");
   const token = getStoredToken();
-  const clientId = getStoredClientId();
 
   if (!token) {
     userChipContainer.innerHTML = `
       <div style="display:flex; gap:0.5rem; align-items:center;">
-        <button type="button" id="btn-login" class="btn btn-primary" style="padding:0.3rem 0.8rem; font-size:0.8rem;">
+        <button type="button" id="btn-login" class="btn btn-primary" style="padding:0.35rem 0.85rem; font-size:0.8rem;">
           <span class="material-symbols-outlined" style="font-size:16px;">lock_open</span> Login with Mastodon
-        </button>
-        <button type="button" id="btn-client-key" class="btn" style="padding:0.3rem 0.6rem; font-size:0.75rem; color:var(--text-muted);">
-          Key 설정 (${clientId ? "저장됨" : "없음"})
         </button>
       </div>
     `;
 
-    document.getElementById("btn-login").addEventListener("click", () => {
-      let key = getStoredClientId();
-      if (!key) {
-        key = prompt("마스토돈 개발자 페이지 (설정->개발->앱)의 'Client key (클라이언트 키)'를 입력하세요:");
-        if (!key || !key.trim()) return;
-        setStoredClientId(key.trim());
+    document.getElementById("btn-login").addEventListener("click", async () => {
+      try {
+        showToast("마스토돈 인증 페이지로 이동합니다...", "sync");
+        await initiateOAuth();
+      } catch (err) {
+        showToast(`인증 시작 실패: ${err.message}`, "error");
       }
-      initiateOAuth(key.trim());
     });
 
-    document.getElementById("btn-client-key").addEventListener("click", () => {
-      const newKey = prompt("마스토돈 개발자 페이지의 'Client key (클라이언트 키)'를 입력하세요:", getStoredClientId() || "");
-      if (newKey !== null) {
-        setStoredClientId(newKey.trim());
-        if (newKey.trim()) showToast("Client Key가 저장되었습니다. Login을 눌러주세요.", "check_circle");
-        window.location.reload();
-      }
-    });
+    const postsList = document.getElementById("posts-list");
+    if (postsList) {
+      postsList.innerHTML = `
+        <div class="posts-empty">
+          로그인 후 게시글 목록을 확인할 수 있습니다.
+        </div>
+      `;
+    }
 
     return;
   }
@@ -99,10 +110,36 @@ function setupCategorySelector() {
       opts.forEach(o => o.classList.remove("active"));
       e.target.classList.add("active");
       selectedCategory = e.target.getAttribute("data-cat");
+      updatePublishButtonState();
       updatePreview();
       triggerAutoSave();
     });
   });
+}
+
+function updatePublishButtonState() {
+  const btnIcon = document.getElementById("btn-publish-icon");
+  const btnLabel = document.getElementById("btn-publish-label");
+
+  if (currentEditingPost) {
+    if (btnIcon) btnIcon.innerText = "save";
+    if (btnLabel) {
+      if (selectedCategory === "tmp") {
+        btnLabel.innerText = "임시 저장 (#tmp)";
+      } else {
+        btnLabel.innerText = "수정사항 저장";
+      }
+    }
+  } else {
+    if (btnIcon) btnIcon.innerText = selectedCategory === "tmp" ? "visibility_off" : "send";
+    if (btnLabel) {
+      if (selectedCategory === "tmp") {
+        btnLabel.innerText = "임시 발행 (#tmp)";
+      } else {
+        btnLabel.innerText = "발행하기";
+      }
+    }
+  }
 }
 
 function setupToolbar() {
@@ -183,14 +220,21 @@ function setupEditorAndPreview() {
   const tagsInput = document.getElementById("input-tags");
   const textarea = document.getElementById("editor-textarea");
 
-  titleInput.addEventListener("input", () => { updatePreview(); triggerAutoSave(); });
-  tagsInput.addEventListener("input", () => { updatePreview(); triggerAutoSave(); });
-  textarea.addEventListener("input", () => { updatePreview(); triggerAutoSave(); });
+  titleInput.addEventListener("input", () => { triggerPreviewUpdate(); triggerAutoSave(); });
+  tagsInput.addEventListener("input", () => { triggerPreviewUpdate(); triggerAutoSave(); });
+  textarea.addEventListener("input", () => { triggerPreviewUpdate(); triggerAutoSave(); });
 
   updatePreview();
 }
 
-function updatePreview() {
+function triggerPreviewUpdate() {
+  clearTimeout(previewDebounceTimer);
+  previewDebounceTimer = setTimeout(() => {
+    updatePreview();
+  }, 40);
+}
+
+async function updatePreview() {
   const titleVal = document.getElementById("input-title").value.trim();
   const tagsVal = document.getElementById("input-tags").value.trim();
   const markdownVal = document.getElementById("editor-textarea").value;
@@ -203,31 +247,55 @@ function updatePreview() {
   previewTitle.innerText = titleVal || "제목 프리뷰...";
   previewTitle.style.color = titleVal ? "var(--text-main)" : "var(--text-muted)";
 
+  let tagsArray = [];
   if (tagsVal) {
-    const tagsArr = tagsVal.split(",").map(t => t.trim()).filter(t => t.length > 0);
-    previewTags.innerHTML = tagsArr.map(t => `#${t.replace(/^#/, '')}`).join(" / ");
-  } else {
-    previewTags.innerHTML = "";
+    tagsArray = tagsVal.split(",").map(t => t.trim()).filter(t => t.length > 0);
   }
+
+  let tagHtml = tagsArray.map(t => `#${t.replace(/^#/, '')}`).join(" / ");
+  if (selectedCategory === "tmp") {
+    tagHtml = `<span style="background:rgba(245,158,11,0.2); color:#fbbf24; padding:0.15rem 0.5rem; border-radius:4px; font-weight:bold; margin-right:0.5rem; font-size:0.75rem;">[#tmp 임시 발행]</span> ` + tagHtml;
+  } else {
+    tagHtml = `<span style="background:rgba(56,189,248,0.15); color:var(--accent-blue); padding:0.15rem 0.5rem; border-radius:4px; font-weight:bold; margin-right:0.5rem; font-size:0.75rem;">#${selectedCategory}</span> ` + tagHtml;
+  }
+  previewTags.innerHTML = tagHtml;
 
   let text = markdownVal;
   text = text.replace(/==([^=]+)==/g, "<mark>$1</mark>");
   text = text.replace(/([^\n])\s*\$\$/g, "$1\n\n$$$$");
   text = text.replace(/\$\$\s*([^\n])/g, "$$$$\n\n$1");
 
-  if (typeof marked !== "undefined") {
-    previewBody.innerHTML = marked.parse(text);
-    previewBody.querySelectorAll('pre code').forEach((block) => {
-      if (typeof hljs !== 'undefined') hljs.highlightElement(block);
-    });
-    previewBody.querySelectorAll('table').forEach(table => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'table-wrapper';
-      table.parentNode.insertBefore(wrapper, table);
-      wrapper.appendChild(table);
-    });
-  } else {
-    previewBody.innerText = text;
+  try {
+    if (typeof ensureMarkdown !== "undefined") {
+      await ensureMarkdown(text);
+    }
+
+    if (typeof marked !== "undefined") {
+      previewBody.innerHTML = marked.parse(text);
+      previewBody.querySelectorAll('pre code').forEach((block) => {
+        const pre = block.parentElement;
+        const langMatch = block.className.match(/language-(\w+)/);
+        if (langMatch && langMatch[1]) {
+          pre.setAttribute('data-lang', langMatch[1].toUpperCase());
+        }
+        if (typeof hljs !== 'undefined') hljs.highlightElement(block);
+      });
+      previewBody.querySelectorAll('table').forEach(table => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-wrapper';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      });
+    } else {
+      previewBody.innerText = text;
+    }
+  } catch (err) {
+    console.warn("Markdown/KaTeX parse fallback:", err);
+    if (typeof marked !== "undefined") {
+      previewBody.innerHTML = marked.parse(text);
+    } else {
+      previewBody.innerText = text;
+    }
   }
 
   // 글자 수 및 단어 수 통계
@@ -307,41 +375,418 @@ function setupPublishing() {
       return;
     }
 
+    // 태그 빌드 (#blog, #research, #tmp)
     let formattedTags = `#${selectedCategory}`;
+
     if (tagsVal) {
       const parsedTags = tagsVal.split(",").map(t => t.trim()).filter(t => t.length > 0);
-      formattedTags += " " + parsedTags.map(t => t.startsWith("#") ? t : `#${t}`).join(" ");
+      const customTags = parsedTags.filter(t => !["blog", "research", "tmp", "draft", "임시", "temp"].includes(t.toLowerCase().replace(/^#/, '')));
+      if (customTags.length > 0) {
+        formattedTags += " " + customTags.map(t => t.startsWith("#") ? t : `#${t}`).join(" ");
+      }
     }
 
     const fullStatusText = `${markdownVal}\n\n${formattedTags}`;
 
     btnPublish.disabled = true;
-    showToast("마스토돈으로 글을 발행하는 중...", "sync");
 
     try {
-      const result = await postStatus({
-        statusText: fullStatusText,
-        spoilerText: titleVal,
-        mediaIds: uploadedMediaIds
-      });
+      if (currentEditingPost) {
+        // 기존 포스트 수정 모드
+        showToast("마스토돈에서 글을 수정하는 중...", "sync");
 
-      showToast("글이 성공적으로 발행되었습니다!", "task_alt");
-      
-      // 임시저장 초기화
-      clearDraft();
+        const updated = await updateStatus({
+          id: currentEditingPost.id,
+          statusText: fullStatusText,
+          spoilerText: titleVal,
+          mediaIds: uploadedMediaIds
+        });
 
-      setTimeout(() => {
-        if (confirm("글이 발행되었습니다! 발행된 페이지로 이동하시겠습니까?")) {
-          window.location.href = `/${selectedCategory}/?id=${result.id}`;
-        }
-      }, 500);
+        const successMsg = selectedCategory === "tmp"
+          ? "글이 #tmp 임시 상태로 수정 저장되었습니다. (사이트 미노출)"
+          : `글이 #${selectedCategory} 정식 게시글로 수정되어 사이트에 반영되었습니다!`;
+
+        showToast(successMsg, "task_alt");
+
+        // 캐시 업데이트 및 목록 갱신
+        await loadPostsList();
+
+        // 수정 상태 갱신
+        const parsed = parseMastodonStatus(updated);
+        currentEditingPost = parsed;
+        document.getElementById("editing-post-title").innerText = parsed.title;
+        updatePublishButtonState();
+
+      } else {
+        // 신규 포스트 발행 모드
+        showToast(
+          selectedCategory === "tmp"
+            ? "마스토돈으로 #tmp 임시 글을 발행하는 중..."
+            : "마스토돈으로 글을 발행하는 중...",
+          "sync"
+        );
+
+        const result = await postStatus({
+          statusText: fullStatusText,
+          spoilerText: titleVal,
+          mediaIds: uploadedMediaIds
+        });
+
+        showToast(
+          selectedCategory === "tmp"
+            ? "임시 발행되었습니다! (마스토돈에만 게시, 사이트 미노출)"
+            : "글이 성공적으로 발행되었습니다!", 
+          "task_alt"
+        );
+        
+        // 임시저장 데이터 초기화
+        clearDraft();
+
+        // 목록 새로고침
+        await loadPostsList();
+
+        setTimeout(() => {
+          if (selectedCategory === "tmp") {
+            showToast("임시 글(#tmp)이 목록에 추가되었습니다. 나중에 태그를 바꿔 게시할 수 있습니다.", "info");
+          } else {
+            if (confirm("글이 성공적으로 발행되었습니다! 발행된 페이지로 이동하시겠습니까?")) {
+              window.location.href = `/${selectedCategory}/?id=${result.id}`;
+            }
+          }
+        }, 500);
+      }
 
     } catch (err) {
-      showToast(`발행 실패: ${err.message}`, "error");
+      showToast(`처리 실패: ${err.message}`, "error");
     } finally {
       btnPublish.disabled = false;
     }
   });
+}
+
+function setupSidebar() {
+  const sidebar = document.getElementById("posts-sidebar");
+  const btnToggle = document.getElementById("btn-toggle-sidebar");
+  const iconToggle = document.getElementById("icon-toggle-sidebar");
+  const btnRefresh = document.getElementById("btn-refresh-posts");
+  const searchInput = document.getElementById("posts-search");
+  const filterTabs = document.querySelectorAll(".filter-tab");
+  const btnNewPost = document.getElementById("btn-new-post");
+  const btnCancelEdit = document.getElementById("btn-cancel-edit");
+  const btnDeleteCurrent = document.getElementById("btn-delete-current");
+
+  // 사이드바 기본 열림/닫힘 상태 복원 (기본값: 열림)
+  const savedState = localStorage.getItem("sulog_admin_sidebar_open");
+  if (savedState === "false") {
+    sidebar.classList.add("collapsed");
+    if (iconToggle) iconToggle.innerText = "menu";
+  }
+
+  // 토글 버튼
+  if (btnToggle) {
+    btnToggle.addEventListener("click", () => {
+      const isCollapsed = sidebar.classList.toggle("collapsed");
+      if (iconToggle) {
+        iconToggle.innerText = isCollapsed ? "menu" : "menu_open";
+      }
+      localStorage.setItem("sulog_admin_sidebar_open", isCollapsed ? "false" : "true");
+    });
+  }
+
+  // 새로고침 버튼
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      loadPostsList();
+    });
+  }
+
+  // 검색창 입력 이벤트
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      searchKeyword = e.target.value.trim().toLowerCase();
+      renderPostsList();
+    });
+  }
+
+  // 필터 탭 클릭 이벤트
+  filterTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      filterTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      activeFilter = tab.getAttribute("data-filter");
+      renderPostsList();
+    });
+  });
+
+  // 새 글 쓰기 버튼
+  if (btnNewPost) {
+    btnNewPost.addEventListener("click", () => {
+      startNewPost();
+    });
+  }
+
+  // 수정 취소 버튼
+  if (btnCancelEdit) {
+    btnCancelEdit.addEventListener("click", () => {
+      startNewPost();
+    });
+  }
+
+  // 현재 수정 중인 글 삭제 버튼
+  if (btnDeleteCurrent) {
+    btnDeleteCurrent.addEventListener("click", () => {
+      if (currentEditingPost) {
+        deletePost(currentEditingPost.id, currentEditingPost.title);
+      }
+    });
+  }
+}
+
+async function loadPostsList() {
+  const postsListEl = document.getElementById("posts-list");
+  if (!postsListEl) return;
+
+  const token = getStoredToken();
+  if (!token) {
+    postsListEl.innerHTML = `<div class="posts-empty">로그인이 필요합니다.</div>`;
+    return;
+  }
+
+  postsListEl.innerHTML = `<div class="posts-loading">게시글 목록을 불러오는 중...</div>`;
+
+  try {
+    const rawStatuses = await fetchMyStatuses({ limit: 40 });
+    postsCache = rawStatuses.map(st => {
+      const parsed = parseMastodonStatus(st);
+      parsed.rawStatus = st;
+      return parsed;
+    });
+
+    const badge = document.getElementById("posts-count-badge");
+    if (badge) {
+      badge.innerText = postsCache.length;
+      badge.style.display = "inline-block";
+    }
+
+    renderPostsList();
+  } catch (err) {
+    postsListEl.innerHTML = `
+      <div class="posts-empty" style="color:var(--accent-red);">
+        목록 불러오기 실패: ${err.message}
+      </div>
+    `;
+  }
+}
+
+function renderPostsList() {
+  const postsListEl = document.getElementById("posts-list");
+  if (!postsListEl) return;
+
+  let filtered = postsCache;
+
+  // 1. 카테고리 필터링 (all | blog | research | tmp)
+  if (activeFilter === "blog") {
+    filtered = filtered.filter(p => p.category === "blog");
+  } else if (activeFilter === "research") {
+    filtered = filtered.filter(p => p.category === "research");
+  } else if (activeFilter === "tmp") {
+    filtered = filtered.filter(p => p.category === "tmp" || p.isDraft);
+  }
+
+  // 2. 검색어 필터링
+  if (searchKeyword) {
+    filtered = filtered.filter(p => {
+      const titleMatch = (p.title || "").toLowerCase().includes(searchKeyword);
+      const tagMatch = (p.tags || []).some(t => t.toLowerCase().includes(searchKeyword));
+      return titleMatch || tagMatch;
+    });
+  }
+
+  if (filtered.length === 0) {
+    postsListEl.innerHTML = `
+      <div class="posts-empty">
+        해당하는 게시글이 없습니다.
+      </div>
+    `;
+    return;
+  }
+
+  postsListEl.innerHTML = "";
+
+  filtered.forEach(post => {
+    const card = document.createElement("div");
+    card.className = "post-card";
+    if (currentEditingPost && currentEditingPost.id === post.id) {
+      card.classList.add("active-editing");
+    }
+
+    let catBadgeHtml = "";
+    if (post.category === "tmp" || post.isDraft) {
+      catBadgeHtml = `<span class="badge-tag badge-draft">#tmp (임시)</span>`;
+    } else if (post.category === "research") {
+      catBadgeHtml = `<span class="badge-tag badge-research">#research</span>`;
+    } else {
+      catBadgeHtml = `<span class="badge-tag">#blog</span>`;
+    }
+
+    const tagSummary = (post.tags && post.tags.length > 0)
+      ? post.tags.map(t => `#${t}`).join(" ")
+      : "";
+
+    const viewUrl = (post.category === "tmp" || post.isDraft)
+      ? post.url // 임시글은 마스토돈 원본 링크로
+      : `/${post.category}/?id=${post.id}`; // 정식 글은 사이트 링크
+
+    card.innerHTML = `
+      <div class="post-card-meta">
+        <div class="post-badge-group">
+          ${catBadgeHtml}
+        </div>
+        <span>${post.date || ""}</span>
+      </div>
+
+      <div class="post-card-title">${escapeHtml(post.title)}</div>
+
+      <div class="post-card-footer">
+        <div class="post-card-tags" title="${escapeHtml(tagSummary)}">${escapeHtml(tagSummary)}</div>
+        <div class="post-card-actions">
+          <button type="button" class="card-action-btn edit-btn" title="에디터에서 수정/태그변경 하기">
+            <span class="material-symbols-outlined" style="font-size: 13px;">edit</span> 수정
+          </button>
+          <button type="button" class="card-action-btn delete-btn" title="게시글 삭제하기">
+            <span class="material-symbols-outlined" style="font-size: 13px;">delete</span>
+          </button>
+          <a href="${viewUrl}" target="_blank" class="card-action-btn view-btn" title="${post.category === 'tmp' ? '마스토돈에서 보기' : '사이트에서 보기'}">
+            <span class="material-symbols-outlined" style="font-size: 13px;">open_in_new</span>
+          </a>
+        </div>
+      </div>
+    `;
+
+    // 카드 전체 클릭 또는 수정 버튼 클릭 시 수정 모드로 진입
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".delete-btn") || e.target.closest(".view-btn")) {
+        return;
+      }
+      startEditingPost(post);
+    });
+
+    const editBtn = card.querySelector(".edit-btn");
+    editBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      startEditingPost(post);
+    });
+
+    const deleteBtn = card.querySelector(".delete-btn");
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deletePost(post.id, post.title);
+    });
+
+    postsListEl.appendChild(card);
+  });
+}
+
+function startEditingPost(post) {
+  currentEditingPost = post;
+
+  // 제목, 본문, 태그 채우기
+  document.getElementById("input-title").value = post.title || "";
+  document.getElementById("editor-textarea").value = post.markdown || "";
+  document.getElementById("input-tags").value = (post.tags || []).join(", ");
+
+  // 카테고리 동기화 (blog, research, tmp)
+  selectedCategory = (post.category === "tmp" || post.isDraft) ? "tmp" : (post.category || "blog");
+  document.querySelectorAll(".cat-opt").forEach(opt => {
+    opt.classList.toggle("active", opt.getAttribute("data-cat") === selectedCategory);
+  });
+
+  // 첨부 미디어 ID 복원
+  uploadedMediaIds = (post.media || []).map(m => m.id).filter(Boolean);
+
+  // 수정 모드 배너 활성화
+  const editBanner = document.getElementById("edit-mode-banner");
+  const editingTitle = document.getElementById("editing-post-title");
+  const editingId = document.getElementById("editing-post-id");
+  const btnNewPost = document.getElementById("btn-new-post");
+
+  if (editBanner) editBanner.style.display = "flex";
+  if (editingTitle) editingTitle.innerText = post.title || "무제 포스트";
+  if (editingId) editingId.innerText = post.id;
+  if (btnNewPost) btnNewPost.style.display = "inline-flex";
+
+  // 버튼 라벨 갱신
+  updatePublishButtonState();
+
+  // 프리뷰 갱신
+  updatePreview();
+
+  // 사이드바 카드 하이라이트
+  document.querySelectorAll(".post-card").forEach(c => c.classList.remove("active-editing"));
+  renderPostsList();
+
+  // 에디터로 포커스
+  document.getElementById("input-title").focus();
+
+  showToast(`'${post.title}' 포스트를 수정 모드로 불러왔습니다. 카테고리를 변경할 수 있습니다.`, "edit_note");
+}
+
+function startNewPost() {
+  currentEditingPost = null;
+
+  // 배너 및 새 글 버튼 숨김
+  const editBanner = document.getElementById("edit-mode-banner");
+  const btnNewPost = document.getElementById("btn-new-post");
+  if (editBanner) editBanner.style.display = "none";
+  if (btnNewPost) btnNewPost.style.display = "none";
+
+  // 폼 비우기
+  document.getElementById("input-title").value = "";
+  document.getElementById("editor-textarea").value = "";
+  document.getElementById("input-tags").value = "";
+  
+  uploadedMediaIds = [];
+
+  // 기본 카테고리: blog
+  selectedCategory = "blog";
+  document.querySelectorAll(".cat-opt").forEach(opt => {
+    opt.classList.toggle("active", opt.getAttribute("data-cat") === "blog");
+  });
+
+  // 버튼 라벨 갱신
+  updatePublishButtonState();
+
+  // 이전 드래프트 복원 시도
+  loadDraft();
+
+  updatePreview();
+  renderPostsList();
+
+  document.getElementById("input-title").focus();
+  showToast("새 글 작성 모드로 전환되었습니다.", "add");
+}
+
+async function deletePost(postId, postTitle) {
+  const displayTitle = postTitle || "이 게시글";
+  const ok = confirm(`'${displayTitle}'을(를) 정말 삭제하시겠습니까?\n마스토돈 서버에서도 영구적으로 삭제됩니다.`);
+  if (!ok) return;
+
+  showToast("게시글을 삭제하는 중...", "delete");
+
+  try {
+    await deleteStatus(postId);
+    showToast("게시글이 성공적으로 삭제되었습니다.", "check_circle");
+
+    // 만약 현재 수정 중이던 글이 삭제된 경우 신규 모드로 전환
+    if (currentEditingPost && currentEditingPost.id === postId) {
+      startNewPost();
+    }
+
+    // 목록 갱신
+    await loadPostsList();
+  } catch (err) {
+    showToast(`삭제 실패: ${err.message}`, "error");
+  }
 }
 
 function setupShortcuts() {
@@ -360,13 +805,18 @@ function setupShortcuts() {
       } else if (e.key === "s" || e.key === "S") {
         e.preventDefault();
         saveDraft();
-        showToast("임시 수동 저장되었습니다.", "save");
+        showToast("임시 로컬 저장되었습니다.", "save");
       }
     }
   });
 }
 
 function triggerAutoSave() {
+  if (currentEditingPost) {
+    document.getElementById("status-draft").innerText = `수정 중: ${currentEditingPost.title}`;
+    return;
+  }
+
   clearTimeout(autoSaveTimer);
   document.getElementById("status-draft").innerText = "저장 중...";
   autoSaveTimer = setTimeout(() => {
@@ -375,6 +825,8 @@ function triggerAutoSave() {
 }
 
 function saveDraft() {
+  if (currentEditingPost) return;
+
   const draftData = {
     category: selectedCategory,
     title: document.getElementById("input-title").value,
@@ -387,6 +839,8 @@ function saveDraft() {
 }
 
 function loadDraft() {
+  if (currentEditingPost) return;
+
   const saved = localStorage.getItem("sulog_admin_draft");
   if (!saved) return;
 
@@ -403,6 +857,8 @@ function loadDraft() {
           opt.classList.toggle("active", opt.getAttribute("data-cat") === draft.category);
         });
       }
+
+      updatePublishButtonState();
       updatePreview();
       document.getElementById("status-draft").innerText = `임시 저장 복원됨 (${draft.updatedAt || ''})`;
     }
@@ -414,7 +870,12 @@ function clearDraft() {
   document.getElementById("input-title").value = "";
   document.getElementById("input-tags").value = "";
   document.getElementById("editor-textarea").value = "";
+  selectedCategory = "blog";
+  document.querySelectorAll(".cat-opt").forEach(opt => {
+    opt.classList.toggle("active", opt.getAttribute("data-cat") === "blog");
+  });
   uploadedMediaIds = [];
+  updatePublishButtonState();
   updatePreview();
   document.getElementById("status-draft").innerText = "자동 저장 준비됨";
 }
@@ -424,6 +885,8 @@ function showToast(message, iconName = "info") {
   const icon = document.getElementById("toast-icon");
   const msg = document.getElementById("toast-message");
 
+  if (!toast || !icon || !msg) return;
+
   icon.innerText = iconName;
   msg.innerText = message;
 
@@ -431,6 +894,13 @@ function showToast(message, iconName = "info") {
   setTimeout(() => {
     toast.classList.remove("show");
   }, 3500);
+}
+
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.innerText = text;
+  return div.innerHTML;
 }
 
 initAdminStudio();

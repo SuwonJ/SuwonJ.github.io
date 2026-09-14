@@ -71,14 +71,26 @@ export async function fetchPostComments(id) {
 /**
  * 마스토돈 툿을 블로그용 마크다운 및 메타데이터로 정제하는 함수
  */
-function parseMastodonStatus(status) {
+export function parseMastodonStatus(status) {
   const rawHtml = status.content || "";
   const allTags = (status.tags || []).map(t => t.name);
 
-  // 카테고리 태그 식별 (#blog, #research, #블로그, #연구)
-  const categoryTags = ["blog", "research", "블로그", "연구"];
-  
-  // 화면 표시용 순수 주제 태그 (카테고리 태그 제외)
+  // 카테고리 태그 식별 (#blog, #research, #tmp)
+  const categoryTags = ["blog", "research", "tmp", "draft", "블로그", "연구", "임시", "temp"];
+  const tmpTags = ["tmp", "draft", "임시", "temp"];
+
+  let category = "blog";
+  if (allTags.some(t => tmpTags.includes(t.toLowerCase()))) {
+    category = "tmp";
+  } else if (allTags.some(t => ["research", "연구"].includes(t.toLowerCase()))) {
+    category = "research";
+  } else if (allTags.some(t => ["blog", "블로그"].includes(t.toLowerCase()))) {
+    category = "blog";
+  }
+
+  const isDraft = category === "tmp" || allTags.some(t => tmpTags.includes(t.toLowerCase()));
+
+  // 화면 표시용 순수 주제 태그 (카테고리 및 임시 태그 제외)
   const displayTags = allTags.filter(
     t => !categoryTags.includes(t.toLowerCase())
   );
@@ -150,6 +162,9 @@ function parseMastodonStatus(status) {
     markdown: markdownText,
     date: status.created_at ? status.created_at.split("T")[0] : "",
     tags: displayTags,
+    allTags: allTags,
+    isDraft: isDraft,
+    category: category,
     media: status.media_attachments || [],
     url: status.url,
     favouritesCount: status.favourites_count || 0,
@@ -157,3 +172,4 @@ function parseMastodonStatus(status) {
     repliesCount: status.replies_count || 0,
   };
 }
+

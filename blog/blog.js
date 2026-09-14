@@ -97,6 +97,16 @@ async function renderPost(id, container) {
 
     parsedHtml += commentsPlaceholder();
 
+    if (post.isDraft) {
+      const draftNoticeHtml = `
+        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; padding: 0.65rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-family: monospace; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>⚠️</span>
+          <span><strong>임시 발행(Draft) 문서:</strong> 마스토돈에만 게시되어 있으며, 사이트 공개 목록에는 노출되지 않습니다.</span>
+        </div>
+      `;
+      parsedHtml = draftNoticeHtml + parsedHtml;
+    }
+
     container.innerHTML = parsedHtml;
     const commentsRoot = container.querySelector("[data-comments-root]");
     if (commentsRoot) {
@@ -262,7 +272,8 @@ async function renderPostList(container) {
     const titleEl = document.getElementById("page-title");
     if (titleEl) titleEl.innerText = "블로그";
 
-    const posts = await fetchPostsByTag("blog");
+    const allPosts = await fetchPostsByTag("blog");
+    const posts = allPosts.filter(p => !p.isDraft);
 
     if (posts.length === 0) {
       container.innerHTML = `
