@@ -24,7 +24,10 @@
           .replace('href="/admin/" class="brand-logo"', 'href="/write/" class="brand-logo"')
           .replace('<span>Sulog Studio</span>', '<span>Sulog Write</span>')
           .replace('<span class="badge">PRO CMS</span>', '<span class="badge">WRITE</span>')
-          .replace('<script type="module" src="./admin.js"><\/script>', '<script type="module" src="./write.js"><\/script>');
+          .replace(
+            '<script type="module" src="./admin.js"><\/script>',
+            '<script type="module" src="./write.js"><\/script><script type="module" src="./pdf.js"><\/script>'
+          );
 
         document.open();
         document.write(html);
