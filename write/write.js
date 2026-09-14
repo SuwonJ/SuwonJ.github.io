@@ -78,16 +78,18 @@ function installFetchLayer() {
     const url = typeof input === 'string' ? input : input.url;
     const method = (init.method || (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
 
-    // 신규 Mastodon 포스트에 /write에서 선택한 공개범위를 적용한다.
-    if (method === 'POST' && /\/api\/v1\/statuses(?:\?|$)/.test(url) && init.body instanceof URLSearchParams) {
-      const body = new URLSearchParams(init.body.toString());
+    // 기존 Mastodon 래퍼는 application/x-www-form-urlencoded body를 문자열로 보낸다.
+    // /write에서 새 포스트를 만들 때만 선택한 공개범위를 끼워 넣는다.
+    if (method === 'POST' && /\/api\/v1\/statuses(?:\?|$)/.test(url) && init.body != null) {
+      const rawBody = init.body instanceof URLSearchParams ? init.body.toString() : String(init.body);
+      const body = new URLSearchParams(rawBody);
       if (!body.has('visibility')) {
         body.set('visibility', localStorage.getItem(VISIBILITY_KEY) || 'public');
       }
-      init = { ...init, body };
+      init = { ...init, body: body.toString() };
     }
 
-    // 오프라인에서 인증 확인 때문에 로그아웃되는 것을 막기 위해 마지막 계정 정보를 사용한다.
+    // 오프라인에서 인증 확인 실패가 logout()으로 이어지는 것을 막는다.
     if (!navigator.onLine && /\/api\/v1\/accounts\/verify_credentials(?:\?|$)/.test(url)) {
       const cachedAccount = await dbGet(ACCOUNT_KEY).catch(() => null);
       if (cachedAccount) {
