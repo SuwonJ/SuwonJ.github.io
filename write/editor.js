@@ -12,11 +12,11 @@ function injectStyles() {
   style.id = 'sulog-codemirror-style';
   style.textContent = `
     #editor-textarea { display: none !important; }
-    .editor-container { padding: 0 !important; min-height: 0; }
-    #cm-editor-host { height: 100%; min-height: 0; overflow: hidden; }
+    .editor-container { padding: 0 !important; min-height: 0; cursor: text; }
+    #cm-editor-host { height: 100%; min-height: 0; overflow: hidden; cursor: text; }
     #cm-editor-host .cm-editor { height: 100%; background: var(--bg-main); color: var(--text-main); }
-    #cm-editor-host .cm-scroller { overflow: auto; font-family: var(--font-code); line-height: 1.62; }
-    #cm-editor-host .cm-content { padding: 1.35rem 1.4rem 8rem; caret-color: var(--accent-blue); }
+    #cm-editor-host .cm-scroller { overflow: auto; font-family: var(--font-code); line-height: 1.62; cursor: text; }
+    #cm-editor-host .cm-content { padding: 1.35rem 1.4rem 8rem; caret-color: var(--accent-blue); min-height: 100%; }
     #cm-editor-host .cm-line { padding: 0 2px; }
     #cm-editor-host .cm-gutters { background: #111827; color: #64748b; border-right: 1px solid var(--border-color); }
     #cm-editor-host .cm-activeLine, #cm-editor-host .cm-activeLineGutter { background: rgba(56,189,248,.045); }
@@ -98,6 +98,12 @@ function pushRange(ranges, decoration, from, to = from) {
   ranges.push(decoration.range(from, to));
 }
 
+function cursorStrictlyInside(cursor, from, to) {
+  // Closing delimiter를 막 입력한 순간(cursor === to)은 이미 수식 밖으로 본다.
+  // 그래서 space/Enter를 한 번 더 칠 필요 없이 즉시 렌더된다.
+  return cursor > from && cursor < to;
+}
+
 function buildLiveDecorations(view) {
   const ranges = [];
   const doc = view.state.doc;
@@ -110,21 +116,24 @@ function buildLiveDecorations(view) {
   const text = doc.sliceString(scanFrom, scanTo);
   const mathRanges = [];
 
-  // Display math: $$ ... $$
+  // Display math: $$ ... $$ . Closing $$ 뒤의 공백/개행은 수식 범위에 포함하지 않는다.
   const blockMath = /\$\$([\s\S]*?)\$\$/g;
   for (const match of text.matchAll(blockMath)) {
     const from = scanFrom + match.index;
     const to = from + match[0].length;
     mathRanges.push({ from, to });
-    if (cursor >= from && cursor <= to) continue;
+    if (cursorStrictlyInside(cursor, from, to)) continue;
 
     const firstLine = doc.lineAt(from);
     const lastLine = doc.lineAt(Math.max(from, to - 1));
     const before = doc.sliceString(firstLine.from, from).trim();
-    const after = doc.sliceString(to, lastLine.to).trim();
+    const afterRaw = doc.sliceString(to, lastLine.to);
+    const after = afterRaw.trim();
     const tex = match[1].trim();
 
-    if (!before && !after) {
+    // 완전히 독립된 블록이고 닫는 $$가 실제 줄 끝일 때만 block decoration을 쓴다.
+    // trailing space가 있으면 그 공백과 caret까지 replace하지 않도록 정확한 $$ 범위만 치환한다.
+    if (!before && !after && to === lastLine.to) {
       pushRange(
         ranges,
         Decoration.replace({ widget: new MathWidget(tex, true), block: true }),
@@ -144,7 +153,7 @@ function buildLiveDecorations(view) {
     const to = from + match[0].length - prefix.length;
     if (overlapsAny(from, to, mathRanges)) continue;
     mathRanges.push({ from, to });
-    if (cursor >= from && cursor <= to) continue;
+    if (cursorStrictlyInside(cursor, from, to)) continue;
     pushRange(ranges, Decoration.replace({ widget: new MathWidget(match[2].trim(), false) }), from, to);
   }
 
@@ -191,7 +200,7 @@ function buildLiveDecorations(view) {
       const from = scanFrom + match.index + prefix;
       const to = scanFrom + match.index + match[0].length;
       if (overlapsAny(from, to, mathRanges)) continue;
-      const cursorInside = cursor >= from && cursor <= to;
+      const cursorInside = cursor > from && cursor < to;
       const innerFrom = from + rule.open;
       const innerTo = to - rule.close;
       if (innerTo <= innerFrom) continue;
@@ -323,7 +332,8 @@ export async function installWriteEditor() {
   });
 
   const theme = EditorView.theme({
-    '&': { fontSize: '14px' },
+    '&': { fontSize: '14px', height: '100%' },
+    '.cm-scroller': { minHeight: '100%' },
     '.cm-content': { minHeight: '100%' },
     '.cm-line': { caretColor: 'var(--accent-blue)' }
   }, { dark: true });
@@ -352,6 +362,20 @@ export async function installWriteEditor() {
   window.sulogWriteEditor = view;
   installModeSwitch(view, liveCompartment);
 
+  // 편집기 아래쪽 빈 공간도 클릭하면 입력 영역으로 동작한다.
+  // 실제 텍스트 위치를 얻을 수 없을 정도로 아래를 누르면 문서 끝으로 caret을 옮긴다.
+  host.addEventListener('mousedown', event => {
+    if (event.button !== 0 || event.target.closest('.cm-gutterElement')) return;
+    requestAnimationFrame(() => {
+      if (!view.hasFocus) {
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+        const anchor = pos == null ? view.state.doc.length : pos;
+        view.dispatch({ selection: { anchor }, scrollIntoView: true });
+        view.focus();
+      }
+    });
+  });
+
   // 기존 toolbar의 익명 handler를 유지하기 위해 클릭 직전에 textarea selection을 CM selection과 맞춘다.
   const toolbar = document.querySelector('.toolbar');
   if (toolbar) {
@@ -373,7 +397,15 @@ export async function installWriteEditor() {
   view.dom.addEventListener('keydown', event => {
     if (!(event.ctrlKey || event.metaKey)) return;
     const key = event.key.toLowerCase();
-    if (key === 'b') {
+    if (key === 'a') {
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({
+        selection: { anchor: 0, head: view.state.doc.length },
+        scrollIntoView: true
+      });
+      view.focus();
+    } else if (key === 'b') {
       event.preventDefault();
       replaceSelection(view, '**', '**', 'bold text');
     } else if (key === 'i') {
@@ -395,7 +427,7 @@ export async function installWriteEditor() {
         key: 's', ctrlKey: true, metaKey: event.metaKey, bubbles: true, cancelable: true
       }));
     }
-  });
+  }, true);
 
   // 기존 Mastodon media drag/drop 로직도 hidden textarea로 전달한다.
   const overlay = document.getElementById('drag-overlay');
