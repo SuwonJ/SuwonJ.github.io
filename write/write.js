@@ -176,3 +176,13 @@ installDraftMirror();
 updateConnectionState();
 window.addEventListener('online', updateConnectionState);
 window.addEventListener('offline', updateConnectionState);
+
+// CodeMirror 로딩에 실패해도 기존 textarea CMS는 그대로 쓸 수 있게 fallback한다.
+try {
+  const { installWriteEditor } = await import('./editor.js');
+  await installWriteEditor();
+} catch (error) {
+  console.error('CodeMirror initialization failed; falling back to textarea:', error);
+  const status = document.getElementById('status-draft');
+  if (status) status.textContent = 'CodeMirror 로드 실패 · 기본 에디터 사용 중';
+}
