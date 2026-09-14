@@ -15,7 +15,14 @@ function generateRandomString(length) {
   return result;
 }
 
+function supportsPkceS256() {
+  return Boolean(window.crypto && window.crypto.subtle && typeof window.crypto.subtle.digest === "function");
+}
+
 async function generateCodeChallenge(codeVerifier) {
+  if (!supportsPkceS256()) {
+    throw new Error("PKCE S256 is not available in this browser context");
+  }
   const encoder = new TextEncoder();
   const data = encoder.encode(codeVerifier);
   const digest = await window.crypto.subtle.digest("SHA-256", data);
@@ -80,19 +87,32 @@ export async function initiateOAuth(clientId) {
   if (!clientId) {
     clientId = await getOrRegisterApp();
   }
+
+  // PKCE를 쓸 수 없는 환경에서는 Mastodon의 client_secret 방식으로 fallback한다.
+  // 예전에 client_id만 남고 secret이 사라진 경우에는 앱을 다시 등록해 secret을 확보한다.
+  if (!supportsPkceS256() && !localStorage.getItem("mastodon_client_secret")) {
+    localStorage.removeItem("mastodon_client_id");
+    clientId = await getOrRegisterApp();
+  }
+
   setStoredClientId(clientId);
-  
-  const verifier = generateRandomString(64);
-  localStorage.setItem("pkce_code_verifier", verifier);
-  const challenge = await generateCodeChallenge(verifier);
+  localStorage.removeItem("pkce_code_verifier");
 
   const authUrl = new URL(`${INSTANCE_URL}/oauth/authorize`);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("client_id", clientId.trim());
   authUrl.searchParams.set("redirect_uri", REDIRECT_URI);
   authUrl.searchParams.set("scope", SCOPES);
-  authUrl.searchParams.set("code_challenge", challenge);
-  authUrl.searchParams.set("code_challenge_method", "S256");
+
+  if (supportsPkceS256()) {
+    const verifier = generateRandomString(64);
+    localStorage.setItem("pkce_code_verifier", verifier);
+    const challenge = await generateCodeChallenge(verifier);
+    authUrl.searchParams.set("code_challenge", challenge);
+    authUrl.searchParams.set("code_challenge_method", "S256");
+  } else {
+    console.warn("Web Crypto subtle API unavailable; continuing OAuth without PKCE S256.");
+  }
 
   window.location.href = authUrl.toString();
 }
@@ -103,19 +123,23 @@ export async function handleOAuthCallback() {
   if (!code) return false;
 
   const clientId = getStoredClientId();
-  const verifier = localStorage.getItem("pkce_code_verifier");
-  if (!clientId || !verifier) return false;
+  if (!clientId) return false;
 
+  const verifier = localStorage.getItem("pkce_code_verifier");
   const body = new URLSearchParams();
   body.set("grant_type", "authorization_code");
   body.set("client_id", clientId);
+
   const clientSecret = localStorage.getItem("mastodon_client_secret");
   if (clientSecret) {
     body.set("client_secret", clientSecret);
   }
+
   body.set("code", code);
   body.set("redirect_uri", REDIRECT_URI);
-  body.set("code_verifier", verifier);
+  if (verifier) {
+    body.set("code_verifier", verifier);
+  }
   body.set("scope", SCOPES);
 
   const res = await fetch(`${INSTANCE_URL}/oauth/token`, {
@@ -133,7 +157,7 @@ export async function handleOAuthCallback() {
   const data = await res.json();
   localStorage.setItem("mastodon_access_token", data.access_token);
   localStorage.removeItem("pkce_code_verifier");
-  
+
   window.history.replaceState({}, document.title, window.location.pathname);
   return true;
 }
@@ -263,8 +287,7 @@ export async function fetchMyStatuses({ limit = 40, maxId = null } = {}) {
 
   const res = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${token}`,
-    },
+      Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) {
@@ -274,4 +297,3 @@ export async function fetchMyStatuses({ limit = 40, maxId = null } = {}) {
 
   return await res.json();
 }
-
