@@ -92,12 +92,11 @@ function installFetchLayer() {
     // 오프라인에서 인증 확인 실패가 logout()으로 이어지는 것을 막는다.
     if (!navigator.onLine && /\/api\/v1\/accounts\/verify_credentials(?:\?|$)/.test(url)) {
       const cachedAccount = await dbGet(ACCOUNT_KEY).catch(() => null);
-      if (cachedAccount) {
-        return new Response(JSON.stringify(cachedAccount), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
+      const offlineAccount = cachedAccount || { id: 'offline', acct: 'offline', avatar: '' };
+      return new Response(JSON.stringify(offlineAccount), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const response = await nativeFetch(input, init);
