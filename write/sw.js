@@ -1,9 +1,10 @@
-const CACHE_NAME = 'sulog-write-v2';
+const CACHE_NAME = 'sulog-write-v3';
 const APP_SHELL = [
   '/write/',
   '/write/index.html',
   '/write/write.js',
   '/write/editor.js',
+  '/write/pdf.js',
   '/admin/index.html',
   '/admin/admin.js',
   '/components/mastodon_oauth.js',
