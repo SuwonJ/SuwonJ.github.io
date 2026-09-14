@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sulog Write</title>
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #0f172a; color: #f8fafc; }
+    body { font-family: system-ui, sans-serif; display: grid; place-items: center; }
+    #boot { opacity: .7; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="boot">Sulog Write 불러오는 중…</div>
+  <script>
+    (async () => {
+      try {
+        const response = await fetch('/admin/index.html');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        let html = await response.text();
+
+        html = html
+          .replace('<title>Sulog Studio - CMS Dashboard</title>', '<title>Sulog Write</title>')
+          .replace('href="/admin/" class="brand-logo"', 'href="/write/" class="brand-logo"')
+          .replace('<span>Sulog Studio</span>', '<span>Sulog Write</span>')
+          .replace('<span class="badge">PRO CMS</span>', '<span class="badge">WRITE</span>')
+          .replace('<script type="module" src="./admin.js"><\/script>', '<script type="module" src="./write.js"><\/script>');
+
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        document.getElementById('boot').textContent = `Sulog Write를 불러오지 못했습니다: ${error.message}`;
+      }
+    })();
+  </script>
+</body>
+</html>
